@@ -4,6 +4,10 @@
 # The API origin is baked into the frontend at build time, so changing a port needs a rebuild.
 # Insecure upstream defaults (Postgres password 0000, ALLOWED_HOSTS=*, Django runserver, wildcard CORS) are acceptable
 # only because nothing is reachable beyond this machine. Local and CI use only; not a production reference.
+#
+# Every service with a `build:` has `pull_policy: build`, so `up` always runs the (cached) build. Images are tagged with the
+# pinned SHA only, so without this a changed build arg, Dockerfile or lock file under an unchanged SHA would silently reuse
+# the old image. Proof by build-arg mutation: docs/env/adr/0001, section 4.
 
 x-backend-build: &backend-build
   context: env/backend
@@ -36,14 +40,14 @@ services:
       retries: 30
 
   migrate:
-    # One-shot. Runs `migrate` only, never `makemigrations`, then fails the stack if a model has no committed migration.
+    # One-shot. Runs `migrate` only, never `makemigrations`: it applies the migrations upstream committed and generates nothing.
     # (Deviation from upstream's compose command `makemigrations && migrate`: docs/env/adr/0001.)
+    # The check that no model lacks a migration (`makemigrations --check --dry-run`) is not part of the boot path;
+    # it belongs to the Milestone 2 verify script and CI.
     build: *backend-build
+    pull_policy: build
     image: conduit-env/backend:${BACKEND_SHA:?}
-    command:
-      - sh
-      - -c
-      - python manage.py migrate && python manage.py makemigrations --check --dry-run
+    command: ["python", "manage.py", "migrate"]
     environment: *backend-env
     restart: "no"
     depends_on:
@@ -52,6 +56,7 @@ services:
 
   api:
     build: *backend-build
+    pull_policy: build
     image: conduit-env/backend:${BACKEND_SHA:?}
     environment: *backend-env
     ports:
@@ -80,6 +85,7 @@ services:
         FRONTEND_SHA: ${FRONTEND_SHA:?}
         # The repo's own build-time hook (src/config.js); no patch, no proxy: the browser talks to the API cross-origin.
         VITE_API_URL: http://localhost:4181/api
+    pull_policy: build
     image: conduit-env/frontend:${FRONTEND_SHA:?}
     ports:
       - "127.0.0.1:4180:80"

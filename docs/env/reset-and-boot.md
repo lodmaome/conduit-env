@@ -23,9 +23,10 @@ docker compose up -d --wait
 What this does:
 
 1. `down -v` removes the containers, the network **and the database volume**. Everything stored in the database is lost.
-2. `up -d --wait` builds the images if they are missing, then starts `db`, runs the `migrate` one-shot, starts `api`, then `frontend`,
+2. `up -d --wait` builds the images (every `up` runs the build, which is a quick cache hit when nothing changed), then starts `db`,
+   runs the `migrate` one-shot (`python manage.py migrate`, nothing is generated), starts `api`, then `frontend`,
    and returns when every long-running service is healthy and `migrate` has exited with code 0.
-   If `migrate` fails (including its check that no model is missing a committed migration), `up` fails and `api` never starts.
+   If `migrate` fails, `up` fails and `api` never starts.
 
 The result is the empty initial state: migrations applied, no application rows, and no users, so register through the app or API.
 
@@ -39,7 +40,7 @@ Use `localhost`, not `127.0.0.1`, for the frontend in a browser: the API origin 
 
 ## Rebuild after a pin change
 
-Images are tagged with the pinned SHAs, so a pin change in `env/pins.env` builds new images on the next `up`.
+Images are tagged with the pinned SHAs, and every `up` runs the build (`pull_policy: build`), so a change to a pin, a build arg, a Dockerfile or a lock file is picked up on the next `up`.
 To rebuild without any build cache:
 
 ```bash
