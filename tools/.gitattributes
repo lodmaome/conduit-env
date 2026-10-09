@@ -1,0 +1,3 @@
+# LF everywhere under tools/: shell scripts must not get CRLF on Windows checkouts.
+# There is deliberately no root .gitattributes: that file is attempt territory (see env/OWNED.txt).
+* text eol=lf

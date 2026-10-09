@@ -1,0 +1,12 @@
+# Paths the environment owns. This is a documented allow-list, not a mechanical check (not enforced in env-v1).
+# Anything NOT matched here is attempt territory: attempts may add and change those files freely,
+# and the environment never touches them. Attempts do not edit the paths below; they ask for an env change instead.
+#
+# One pattern per line, relative to the repository root, forward slashes.
+# "*" matches within one path segment; "**" matches any number of segments (including none).
+# Lines starting with "#" and blank lines are comments.
+compose.yaml
+env/**
+tools/**
+docs/env/**
+.github/workflows/env-*.yml

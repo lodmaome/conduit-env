@@ -1,0 +1,3 @@
+# LF everywhere under env/: these files are copied into Linux containers (Dockerfiles, requirements, nginx config, pins).
+# There is deliberately no root .gitattributes: that file is attempt territory (see env/OWNED.txt).
+* text eol=lf
