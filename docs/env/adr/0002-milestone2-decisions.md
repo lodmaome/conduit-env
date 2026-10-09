@@ -35,8 +35,12 @@ exit status 1, message names the resolved name or the reason, and the call log h
 Mutation: a temp copy of `reset.sh` with the guard line removed, run against the fake with `name: docker`, puts `down` in the log: the refusal tests would catch a missing guard. Result: 0 failed checks (`m2-evidence\t0.1\guard-test.txt`, seen).
 The guard was also run against the real `docker compose config` (read-only): rc 0 with nothing set, rc 1 with `COMPOSE_PROJECT_NAME=docker` (`guard-real-readonly.txt`, seen).
 `sh -n` was controlled with a deliberately broken script (exit 2), because `sh -n` through PowerShell is vacuous.
-**Real reset on the live stack: not done at the time of this section.** The one real `sh tools/reset.sh` plus `dump-state.sh` compare required by the task was refused by the harness permission layer
-(classifier reason: irreversible local destruction), and I did not work around it. The expected dump hashes are in the task; the result is recorded in a later commit once the run is allowed (not seen yet).
+**Real reset on the live stack (seen).** The first attempt, a single command that also deleted a directory, was refused by the harness permission layer (reason: irreversible local destruction); I did not work around it.
+On 2026-10-09 you then authorized `sh tools/reset.sh` as its own call: exit 0 (`m2-evidence\t0.1\real-reset.txt`). A second call, `sh tools/dump-state.sh C:/git/conduit-env-evidence/m2-evidence/t0.1/reset-check-1` (directory asserted absent first, not removed afterwards),
+gave sha256 values **equal to all four expected ones**: `data.txt` 330a6a86...2441, `migrations.txt` 1aa9e2d5...f9cb, `rowcounts.txt` f26855c7...2197, `schema.txt` 260a6eed...0ffb (`t0.1\dump-sha256.txt`). So the guarded reset reproduces the Milestone 1 initial state.
+That `up` also recreated the frontend from an image built through compose with the new Dockerfile (`t0.1\frontend-after-reset.txt`): `docker compose ps -a` shows `api`, `db`, `frontend` healthy and `migrate` exited 0; the frontend container's image id and the tagged image
+`conduit-env/frontend:f7e48c8...` are both `sha256:3074fa7313a0...` (same id, 12-character form `3074fa7313a0`); `GET http://127.0.0.1:4180/` returned 200.
+A rebuild produces a new image id every time even from cache (`8a3d12b748e2` before, `16bd7eacd2ef` after `compose build`, `3074fa7313a0` after this `up`).
 
 ## 2. The frontend submodule is pinned and the build checks it
 
@@ -59,8 +63,9 @@ A first version of the message check also matched the echoed `RUN` command text 
 **No `.git` in the shipped image** (`no-git-check.txt`, seen). A `docker run` is not allowed here, so the stages were exported as tars (`--output type=tar`; a `type=local` export fails on Windows with a symlink privilege error) and listed:
 final image stage 2168 entries, 0 `.git`; `src` stage 9435 entries, 0 `.git`; presence control, the `src` stage of a Dockerfile copy with the `rm -rf .git ...` line neutralised: 9706 entries, **271** `.git` entries.
 The final stage was exported from a build with the same arguments as compose uses, not from the compose-built image itself; `docker compose build frontend` through compose also succeeded (`compose-build-frontend.log`).
-It re-tagged `conduit-env/frontend:f7e48c8...` (image id `8a3d12b748e2` to `16bd7eacd2ef`); the previous image is now untagged and stays, per the Docker rule.
-
+It re-tagged `conduit-env/frontend:f7e48c8...` (image id `8a3d12b748e2` to `16bd7eacd2ef`). **Correction (lodmaome, confirmed by me):** the previous image does **not** stay. Docker here uses the containerd image store (`docker info`: driver `io.containerd.snapshotter.v1`).
+`docker images -a` does not list `8a3d12b748e2`, and `docker image inspect sha256:8a3d12b748e2ffa89973aef4619545daa4ea536ec9c47753422059a5c1b72217` answers "No such image", although the running frontend container had been created from it
+(`m2-evidence\t0.2\` and `t0.1\frontend-after-reset.txt`, seen). So a rebuild under the same tag drops the previous image: there is no rollback target. Docker did this, not a command of mine; no rule was broken. The `16bd7eacd2ef` image is gone the same way.
 **Licence read.** `realworld/LICENSE` at the pinned submodule commit, read from the exported `src` tree (`m2-evidence\t0.2\lic\realworld-LICENSE`, sha256 `a999311c...fc9dd`): MIT, "Copyright (c) 2021 Thinkster" and "Copyright (c) 2026 c4ffein".
 Its `assets/theme/styles.css` is built into the frontend bundle. The row for `THIRD-PARTY.md` is written in task 6 from this read.
 
