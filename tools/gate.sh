@@ -11,9 +11,10 @@
 #   - has --network none (all five tools work offline; the --online lychee run is the one exception).
 # File lists come from `git ls-files`, sorted. Tool configs live in env/gate/, never at the repo root (root files are attempt territory).
 # Every tool is also run on a failing fixture (must fail) and a clean control (must pass) from env/gate/fixtures/, which the real lists exclude.
+# shellcheck disable=SC2329  # the t_* functions are invoked indirectly through "$_runner"
 set -u
 root="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$root"
+cd "$root" || exit 90
 if [ ! -f compose.yaml ] || [ ! -f env/OWNED.txt ] || [ ! -f env/gate/tools.env ]; then
   echo "refusing: $root is not the conduit-env repository root (compose.yaml, env/OWNED.txt or env/gate/tools.env missing)."; exit 90
 fi

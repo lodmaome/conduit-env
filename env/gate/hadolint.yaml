@@ -1,12 +1,17 @@
 # hadolint config for the gate. Every ignored rule has a reason; nothing else is ignored.
 ignored:
-  # Pin apt package versions: apt drift is a known, accepted limitation (ADR 0001 section 2); pinning makes the build fail at the next security update instead of drifting.
+  # DL3008, pin apt package versions: apt drift is a known, accepted limitation (ADR 0001 section 2).
+  # Pinning makes the build fail at the next security update instead of drifting.
   - DL3008
-  # Use WORKDIR instead of cd: the `cd` lines are inside one `set -eu` RUN of a throwaway fetch stage (git init, fetch, checkout, assert, drop .git); splitting them would not change what is built.
+  # DL3003, use WORKDIR instead of cd: the `cd` lines sit inside one `set -eu` RUN of a throwaway fetch stage
+  # (git init, fetch, checkout, assert, drop .git). Splitting them would not change what is built.
   - DL3003
-  # Avoid extra packages with --no-install-recommends: the backend app stage installs `libpq-dev gcc` as the upstream Dockerfile does; ADR 0001 section 2 records that the slimmer install was not tested and would differ from the image that scored 154/154.
+  # DL3015, avoid extra packages with --no-install-recommends: the backend app stage installs `libpq-dev gcc` as upstream does.
+  # ADR 0001 section 2: the slimmer install was not tested and would differ from the image that scored 154/154.
   - DL3015
-  # Use COPY instead of ADD for files and folders: `ADD --keep-git-dir <git-url>#<sha>` is BuildKit's pinned git fetch; COPY cannot fetch a git repository.
+  # DL3020, use COPY instead of ADD: `ADD --keep-git-dir <git-url>#<sha>` is BuildKit's pinned git fetch. COPY cannot fetch a repository.
   - DL3020
-  # Set pipefail before a RUN with a pipe: /bin/sh is dash here (no pipefail). The only pipes feed `git ls-tree | awk` inside $(...) and the lock-generation listing; if the left side fails the value is empty and the following assertion fails the build, so it fails closed.
+  # DL4006, set pipefail before a RUN with a pipe: /bin/sh is dash here, which has no pipefail.
+  # The only pipes feed `git ls-tree | awk` inside $(...) and the lock-generation listing.
+  # If the left side fails the value is empty and the assertion after it fails the build, so it fails closed.
   - DL4006
