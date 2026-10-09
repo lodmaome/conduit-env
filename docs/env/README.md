@@ -91,5 +91,6 @@ node --test tools/test/*.test.mjs
 - An **offline** `docker compose up`: not tested. Every `up` runs a build pass, and whether BuildKit contacts the network when everything is cached was not checked.
 - **Linux, macOS and GitHub Actions:** nothing has run there. Every measurement is from one Windows 11 laptop.
 - A **Compose version other than 5.5.1**, a **Chrome other than 154.0.8037.98**, and Chromium or headless-shell builds.
+- **A hermetic page.** The served `index.html` loads two external stylesheets at view time, `//code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css` and `//fonts.googleapis.com/css?family=Lora:400,700|Source+Sans+Pro:300,400,600,700`, and the font stylesheet in turn requests font files from `fonts.gstatic.com`. With the two stylesheet hosts blocked, the browser check's three assertions still passed (one run, 2026-10-09): the load event came after 65 ms against 262 ms unblocked, and the page showed system fonts and no icons (ADR 0002 section 10). A blocked or offline network changes timing and looks, not the stack.
 - **Byte-identical rebuilds of the images.** The Python packages are hash-pinned; the apt packages are not (76 in the backend image stage, 17 in each throwaway fetch stage), so rebuilt images can differ.
 - Anything about **production use**.

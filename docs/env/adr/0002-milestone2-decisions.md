@@ -210,3 +210,20 @@ Two runs each, one machine, a network that varies: indicative only.
 **What the tests prove.** Release check 5 fails, each with its own readable message, for a changed sha7, a changed requirements hash, a changed build-tools hash, a missing `x-conduit-env`, and a file that is not valid JSON, and passes on the golden control (`selftest-check5.txt`, seen; unit tests 67 of 67). The `/auth/` operations and 19 RealWorld operations test is unchanged and passes.
 It does not prove that the served document stays the same under unchanged pins (ADR 0003, deferral 3).
 **Statements corrected by this change:** ADR 0001 section 2 (a superseded note at the snapshot-header paragraph), ADR 0002 section 6 (note), ADR 0003 deferral 3, `docs/env/contract/README.md`, `docs/env/contract/.gitattributes` (comment), `docs/env/CHANGELOG.md`, `docs/env/README.md` (the `lock-hashes.sh` bullet), the comment in `tools/lock-hashes.sh`. `docs/env/ATTEMPTS.md` needed no change (it only links the contract README). The reports `MILESTONE1-FOLLOWUP.md` and `MILESTONE2-REPORT.md` are history and were not edited.
+
+## 10. The served page is not hermetic (follow-up F4)
+
+**Seen** in the served `index.html` (`curl http://127.0.0.1:4180/`, 2026-10-09): two external render-blocking stylesheets, `//code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css` (icons) and `//fonts.googleapis.com/css?family=Lora:400,700|Source+Sans+Pro:300,400,600,700` (web fonts). The frontend is not changed.
+
+**Pre-registered** (`m2-followup-evidence\PREREGISTRATION.md`): with both hosts blocked through `Network.setBlockedURLs`, do the browser check's three assertions still pass; load-event time against the unblocked run, one run each; appearance only if a screenshot is taken and read.
+**Results** (`m2-followup-evidence\f4\`, seen; Chrome 154.0.8037.98, one run each, one machine, one network, so indicative only):
+
+| Run | Assertions | Load event after navigation | External hosts requested |
+|---|---|---|---|
+| unblocked | 3 of 3 pass | 262 ms | `code.ionicframework.com`, `fonts.googleapis.com`, **`fonts.gstatic.com`** |
+| both stylesheet hosts blocked | 3 of 3 pass | 65 ms | `code.ionicframework.com`, `fonts.googleapis.com` (both blocked) |
+
+The assertions do not depend on those hosts. The page is also not usable as "offline-identical": blocked, the screenshot (`unblocked.png`, `blocked.png`, read by me) shows the same layout and the article, but system fonts instead of Lora and Source Sans Pro (a serif heading and a sans-serif body of a different design) and no icons next to "Sign in" and "Sign up" and no heart in the like button. That is all I can see in the screenshots; I did not look at other pages.
+**A third host appears, which the review did not name:** `fonts.gstatic.com`, the host of the font files that the Google stylesheet refers to, requested only when that stylesheet loads. So the real unblocked control lists three hosts, not two; the unit test uses a fixture with a third host and the sorted, unique listing.
+A first measurement was invalid and is kept (`f4\first-attempt\`): the check stopped at the first success, before the load event, so the unblocked run showed no load time; with `--timing` it now also waits for the load event (bounded by the same 20 s deadline).
+**Tool changes:** `tools/browser-check.mjs` prints an informational line with the external hosts (never part of the exit status) and has measurement switches `--block-hosts a,b`, `--timing` and `--screenshot <file>`; `externalHosts` in `tools/lib/browser-lib.mjs` is unit tested (own origins, other ports, non-http schemes and duplicates left out; control with only own origins gives none).

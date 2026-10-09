@@ -29,4 +29,4 @@ The release gate requires a row for every key in `env/pins.env` and `env/gate/to
 - **npm packages bundled into the frontend** (from the frontend's `bun.lock`): not inventoried. The built bundle contains them; their licences were not read.
 - **Debian and Alpine packages** in the images: not inventoried (they are unpinned, ADR 0001 section 2).
 - **The Hurl runner and the RealWorld Hurl suite** used in Phase 1 and Milestone 1 measurements are not part of this repository and are not listed here.
-- **Google Fonts and Ionicons** are loaded by the frontend page from their CDNs at view time (`index.html`); no licence was read for them.
+- **Google Fonts and Ionicons** are loaded by the frontend page from their CDNs at view time (`index.html`); no licence was read for them. The page is therefore not hermetic: see [README.md](README.md) ("What is not claimed") and ADR 0002 section 10.

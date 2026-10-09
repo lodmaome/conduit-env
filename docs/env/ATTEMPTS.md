@@ -68,6 +68,11 @@ The environment never ships that file, and its own checks bypass it. The rules b
 The backend serves 25 operations: the 19 RealWorld ones and six under `/auth/` that are not part of RealWorld. A coverage-gap flagger must exclude every `/auth/` path.
 The list and the snapshot are in [contract/README.md](contract/README.md).
 
+## 5b. The page requests external hosts
+
+The frontend's `index.html` loads two external stylesheets from `code.ionicframework.com` and `fonts.googleapis.com`, and the font stylesheet requests files from `fonts.gstatic.com`. A test run on a blocked or offline network sees different timing (measured once: load event 65 ms with the two stylesheet hosts blocked against 262 ms unblocked) and different fonts and icons, but the stack itself works (the browser check's assertions passed either way).
+Whether an attempt blocks or mocks those requests is the attempt's own decision; write it down in `docs/attempt/`. `node tools/browser-check.mjs` lists the external hosts it saw as an informational line.
+
 ## 6. An env-level defect
 
 If something owned by the environment is wrong (a script, a pin, the stack, a document), do not edit it in the attempt. Write it up in `docs/attempt/` as a **proposed env change**:

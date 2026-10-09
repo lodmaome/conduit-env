@@ -79,3 +79,18 @@ test('preflight: browser needs CHROME_BIN unless --no-browser; skipping is visib
   const skipped = evaluatePreflight({ ...base, browser: { skip: true } });
   assert.ok(skipped.some((p) => p.level === 'info' && /skipped on request/.test(p.text)) && !skipped.some((p) => p.level === 'error'));
 });
+
+test('externalHosts: sorted, unique, own origins and non-http schemes left out; a third host is listed', async () => {
+  const { externalHosts } = await import('../lib/browser-lib.mjs');
+  const reqs = [
+    { url: 'http://localhost:4180/', type: 'Document' }, { url: 'http://localhost:4181/api/tags', type: 'Fetch' }, { url: 'http://127.0.0.1:4182/x', type: 'Other' },
+    { url: '//code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css', type: 'Stylesheet' }, // not absolute: skipped, the browser reports absolute URLs
+    { url: 'https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css', type: 'Stylesheet' },
+    { url: 'https://fonts.googleapis.com/css?family=Lora', type: 'Stylesheet' }, { url: 'https://fonts.googleapis.com/css?family=Source', type: 'Stylesheet' },
+    { url: 'https://third.example/x.js', type: 'Script' }, { url: 'data:image/png;base64,AAAA', type: 'Image' }, { url: 'about:blank', type: 'Document' },
+    { url: 'http://localhost:9999/other-port', type: 'Fetch' },
+  ];
+  assert.deepEqual(externalHosts(reqs), ['code.ionicframework.com', 'fonts.googleapis.com', 'localhost', 'third.example']);
+  // control: only own origins -> none
+  assert.deepEqual(externalHosts(reqs.slice(0, 3)), []);
+});

@@ -18,7 +18,7 @@ import dns from 'node:dns/promises';
 import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { EXIT_COULD_NOT_RUN, EXPECTED_API_ORIGIN, MARKER_NAME, PROFILE_PREFIX, evaluateRequests, parseDevToolsActivePort, profileDirProblem } from './lib/browser-lib.mjs';
+import { EXIT_COULD_NOT_RUN, EXPECTED_API_ORIGIN, MARKER_NAME, PROFILE_PREFIX, evaluateRequests, externalHosts, parseDevToolsActivePort, profileDirProblem } from './lib/browser-lib.mjs';
 import { makeRunData } from './lib/verify-lib.mjs';
 
 const argv = process.argv.slice(2);
@@ -26,6 +26,10 @@ const opt = (name, dflt) => { const i = argv.indexOf(name); return i >= 0 ? argv
 const frontendUrl = opt('--frontend-url', 'http://localhost:4180/');
 const expectedOrigin = opt('--expected-api-origin', EXPECTED_API_ORIGIN);
 const blockApi = argv.includes('--block-api');
+// Measurement switches (informational, never part of the verdict): block hosts through Network.setBlockedURLs, print the load-event time, save a screenshot.
+const blockHosts = (opt('--block-hosts', '') || '').split(',').filter(Boolean);
+const showTiming = argv.includes('--timing');
+const screenshotPath = opt('--screenshot', '');
 const API = 'http://127.0.0.1:4181/api'; // setup calls from this process; the browser uses what the frontend was built with
 
 const die = (msg) => { console.log(`could not run: ${msg}`); process.exit(EXIT_COULD_NOT_RUN); };
@@ -130,16 +134,19 @@ try {
   const ids = new Map();
   const remote = new Set();
   let loaded = false;
+  let loadedAt = 0;
   cdp.on((m) => {
     if (m.sessionId !== sessionId) return;
     if (m.method === 'Network.requestWillBeSent') { requests.push({ url: m.params.request.url, type: m.params.type }); ids.set(m.params.requestId, m.params.request.url); }
     if (m.method === 'Network.loadingFailed') failures.push({ url: ids.get(m.params.requestId) ?? '', type: m.params.type, errorText: m.params.blockedReason ? `blocked by the DevTools client, reason ${m.params.blockedReason}` : (m.params.errorText || 'failed') });
     if (m.method === 'Network.responseReceived' && ['Fetch', 'XHR'].includes(m.params.type)) remote.add(m.params.response.remoteIPAddress ?? 'unknown');
-    if (m.method === 'Page.loadEventFired') loaded = true;
+    if (m.method === 'Page.loadEventFired') { loaded = true; loadedAt = Date.now(); }
   });
   await cdp.send('Page.enable', {}, sessionId);
   await cdp.send('Network.enable', {}, sessionId);
-  if (blockApi) await cdp.send('Network.setBlockedURLs', { urls: [`${expectedOrigin}/*`] }, sessionId);
+  const blocked = [...(blockApi ? [`${expectedOrigin}/*`] : []), ...blockHosts.map((h) => `*://${h}/*`)];
+  if (blocked.length) await cdp.send('Network.setBlockedURLs', { urls: blocked }, sessionId);
+  const navStart = Date.now();
   await cdp.send('Page.navigate', { url: frontendUrl }, sessionId);
 
   let titleSeen = false;
@@ -149,13 +156,23 @@ try {
     const r = await cdp.send('Runtime.evaluate', { expression: `document.body ? document.body.innerText.includes(${JSON.stringify(title)}) : false`, returnByValue: true }, sessionId);
     titleSeen = r.result.value === true;
     // Stop early on success, or once the page has loaded and an API request has visibly failed (a blocked API must not look like a timeout).
-    if (titleSeen || (loaded && failures.some((f) => ['Fetch', 'XHR'].includes(f.type)))) break;
+    // With --timing, also wait for the load event (bounded by the same deadline), so the measurement is not cut short by an early success.
+    if ((titleSeen && (!showTiming || loaded)) || (loaded && failures.some((f) => ['Fetch', 'XHR'].includes(f.type)))) break;
   }
   const { assertions, info } = evaluateRequests({ requests, failures: failures.map((f) => ({ ...f })), expectedOrigin, titleSeen, title });
 
   console.log(`browser: ${version.product}; page ${frontendUrl}; expected API origin ${expectedOrigin}${blockApi ? '; API origin BLOCKED through Network.setBlockedURLs' : ''}`);
   for (const a of assertions) console.log(`${a.ok ? 'PASS' : 'FAIL'}  ${a.name}: ${a.text}`);
   for (const i of info) console.log(i);
+  const ext = externalHosts(requests);
+  console.log(`informational: external hosts requested (every host other than the stack's own localhost and 127.0.0.1 ports 4180 to 4182): ${ext.join(', ') || 'none'}`);
+  if (blockHosts.length) console.log(`informational: hosts blocked through Network.setBlockedURLs: ${blockHosts.join(', ')}`);
+  if (showTiming) console.log(`informational: load event ${loadedAt ? `${loadedAt - navStart} ms after navigation (one run, this machine, this network)` : 'did not fire within the wait'}`);
+  if (screenshotPath) {
+    const shot = await cdp.send('Page.captureScreenshot', { format: 'png' }, sessionId);
+    writeFileSync(screenshotPath, Buffer.from(shot.data, 'base64'));
+    console.log(`informational: screenshot written to ${screenshotPath}`);
+  }
   console.log(`informational: Fetch/XHR responses came from ${[...remote].sort().join(', ') || 'no response'}`);
   try {
     const lk = await dns.lookup('localhost', { all: true });

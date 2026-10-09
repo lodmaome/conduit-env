@@ -77,3 +77,18 @@ export function evaluateRequests({ requests, failures, expectedOrigin, oldOrigin
   info.push(otherOld.length ? `informational: ${otherOld.length} non-Fetch/XHR request(s) to ${oldOrigin}: ${[...new Set(otherOld.map((r) => `${r.type} ${r.url}`))].sort().join('; ')}` : `informational: no non-Fetch/XHR request to ${oldOrigin}`);
   return { assertions, info };
 }
+
+// Informational: every host the page requested other than the stack's own (localhost and 127.0.0.1 on ports 4180 to 4182), http(s) only,
+// sorted and unique. Never part of a verdict.
+const OWN_PORTS = new Set(['4180', '4181', '4182']);
+export function externalHosts(requests) {
+  const hosts = new Set();
+  for (const r of requests) {
+    let u;
+    try { u = new URL(r.url); } catch { continue; }
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') continue;
+    if ((u.hostname === 'localhost' || u.hostname === '127.0.0.1') && OWN_PORTS.has(u.port)) continue;
+    hosts.add(u.hostname);
+  }
+  return [...hosts].sort();
+}
