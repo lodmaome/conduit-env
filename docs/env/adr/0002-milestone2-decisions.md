@@ -71,3 +71,29 @@ Its `assets/theme/styles.css` is built into the frontend bundle. The row for `TH
 
 **SHA repetition check.** The existing M1 check (a full SHA or digest outside `env/pins.env`) scans `compose.yaml`, `env/stack.yaml`, `env/frontend`, the backend Dockerfiles, `tools/` and `docs/env/reset-and-boot.md`, and exempts the lock files.
 It stays green on this change (no match; positive control: the same pattern over `env/pins.env` and `compose.yaml` matches 7 lines). Record documents (ADRs, reports) cite SHAs on purpose; they are outside that scan and stay outside it when the check is ported into the release gate (task 3).
+
+## 3. The verify script (`node tools/verify.mjs`)
+
+**Pre-registered rule** (`m2-evidence\PREREGISTRATION.md`, "Task 1"): healthy stack gives exit 0 and four PASS lines; every check has a failing fixture; the migrations mutation must fail the check and leave the tracked tree and the running stack unchanged.
+
+**What it does.** Node 22, stdlib only; pure parts in `tools/lib/verify-lib.mjs`, I/O-injected checks in `tools/lib/verify-checks.mjs`. Default mode checks whatever listens on `127.0.0.1:4180-4182` and runs one compose command, an `exec`
+(`docker compose -f compose.yaml -p conduit-env exec -T api python manage.py makemigrations --check --dry-run`, so an attempt's override is bypassed). All HTTP uses `127.0.0.1`, never `localhost`.
+Checks: `tags` (200 and a `tags` array), `api-flow` (register 201, login 200, current user 200, create article 201, read back 200; fields compared, and the read-back must equal the create response), `frontend` (200, `text/html`, `#app`), `migrations`.
+Exit status is the number of failed checks; **90** means it could not run (preflight failed, bad argument, reset failed). Verdict lines carry no timestamps. The tool writes no file; credentials are generated per run (`verify-<10 hex>`, `@example.com`
+because `.test` is rejected by the backend's email validator, measured; random password) and are redacted from any output, with a JWT-shape redaction as a second layer.
+
+**Preflight, and where the Compose minimum comes from.** Node >= 22, engine reachable (`docker version`; it never starts Docker), Compose >= **2.20.0**, and the state of the three ports (they must listen in the default mode; informational with `--fresh`).
+The 2.20.0 bound: the docker/compose v2.20.0 release notes list "Add support for `include`" (read 2026-10-09). The Compose docs page for `include` gives no version for it or for its `env_file` and `project_directory` attributes, which `compose.yaml` also uses.
+**So 2.20.0 is a documented lower bound only: untested, and possibly too low.** Only 5.5.1 was ever run; any other accepted version prints a note saying so.
+
+**Tests.** `node --test tools/test/*.test.mjs`: 23 tests, 0 failed (preflight problems, version parsing, article comparison, migrations evaluator including exit 1, odd output, crash and missing docker, redaction with a control, and one fixture per HTTP fault
+against a fake server: `tags-500`, `tags-no-array`, `register-422`, `login-401`, `login-no-token`, `me-wrong-user`, `create-500`, `create-alters-body`, `create-alters-tags`, `readback-404`, `readback-differs`, `frontend-500`, `frontend-not-app`, an unreachable server),
+each of which must fail exactly the named check; the healthy fake passes all (control). Two tests of mine failed first, both faults in the test (a one-character "secret" that matched inside "text", and a `\n` that became a real newline in a script patch).
+
+**Real runs** (`m2-evidence\t1\`, seen). Default mode on the live stack: exit 0, 4 PASS. `--fresh`: exit 0 after a real `tools/reset.sh` (`verify-fresh.txt`); the project-name guard passes under `COMPOSE_FILE=compose.yaml` (`guard-under-composefile.txt`).
+**What one run leaves in the database** (`db-before`/`db-after` dumps, `rowcounts.diff`): `accounts_user` +1, `articles_article` +1, `articles_article_tags` +2, `articles_tag` +2, `jwt_ninja_session` +3. There is no user-delete endpoint, so rows stay until the next reset.
+**Migrations mutation** (`tools/check-migrations-mutation.mjs`, `migrations-mutation.txt`): control exit 0 "No changes detected"; in a copy of `/app` made with Python's `tempfile.TemporaryDirectory` inside the running api container, a field added to `Tag` gives exit 1 and `Migrations for 'articles': ... Add field mutation_probe to tag`,
+which the verify evaluator reports as FAIL. Unchanged before and after: `git status --porcelain` and HEAD, and for all 4 containers id, start time and state, and `docker diff` of the api container (0 entries both times). The snapshot comparison was itself mutation-tested in-process
+(an extra `docker diff` line, or a changed container line, makes the snapshots unequal). Not verified: that `docker diff` reports a write the way I expect (the control would have meant writing into the running container, which I did not do).
+
+**Not verified.** A failing run of the real script against a really broken stack (stack down, a stopped engine): those paths are covered by fixtures and unit tests only. A Compose version other than 5.5.1.
