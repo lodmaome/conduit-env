@@ -3,7 +3,7 @@
 > **Revision note (after review).** This is the Milestone 1 report as first delivered and reviewed; it is kept as the record of that review. The review rulings changed several things it describes:
 > `constraints.txt` is now `requirements.lock.txt` and `build-tools.txt` is `build-tools.lock.txt`; the migrations check is no longer in the `migrate` one-shot; the backend build no longer fetches the backend's three submodules;
 > every built service has `pull_policy: build`; the bun image is `oven/bun:1.4.2@sha256:...`; boot times were re-measured. The current state is in [MILESTONE1-FOLLOWUP.md](MILESTONE1-FOLLOWUP.md) and the [ADR](adr/0001-pair-lock-and-migrations.md).
-> Paths such as `m1-evidence/` and `phase1-evidence/` below name local folders **kept outside the repository** (they are not in git): they are external evidence, not repo paths. Statements below that this file is "untracked" are historical; it is now tracked.
+> Paths such as `m1-evidence/` and `phase1-evidence/` below name folders that are **outside the repository**, in `C:\git\conduit-env-evidence\` (`m1-evidence\`, `phase1-evidence\`): they are external evidence, not repo paths, and are not in git. Statements below that this file is "untracked" or that the evidence is "untracked" are historical; the file is now tracked.
 
 **Status: complete, awaiting your review.** Local environment only. Five local commits on `main` (no push, no tag, no remote, nothing on GitHub). Docker is back to your baseline except for BuildKit cache (+4.2 GB, kept).
 **Run window:** about 40 minutes of wall clock from the first Docker action (11:05 to 11:44 local, 2026-10-09). Docker was down when I started; I did not touch Docker Desktop, you restarted it.

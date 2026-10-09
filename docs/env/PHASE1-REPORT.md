@@ -1,5 +1,7 @@
 # conduit-env — Phase 1 report
 
+> **Evidence location (added when this report was tracked under `docs/env/`; the body below is otherwise unchanged).** Every `phase1-evidence/` path in this report, including "next to this file", names a folder that is **outside the repository**, at `C:\git\conduit-env-evidence\phase1-evidence\`. It is external evidence, not a repo path, and is not in git. Statements below that this report is "uncommitted" or that nothing was committed are as of Phase 1.
+
 **Status: complete, awaiting your review.** Uncommitted working file; no `git init`, no commits, no tags, no pushes, nothing opened on GitHub. It becomes the ADR in Phase 2.
 **Run window:** 2026-10-08T23:43:56Z → ≈00:58Z (≈74 min). **Evidence:** `phase1-evidence/` next to this file (harness scripts, per-run JSON, screenshots, logs; index in §13).
 

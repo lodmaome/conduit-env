@@ -1,5 +1,5 @@
 # Versions resolved by the Phase 1 K1 build of django-ninja @ 04ef47c (2026-10-08), i.e. the set that scored 154/154 Hurl.
-# Source: PHASE1-REPORT.md section 7 and phase1-evidence/logs/django-ninja_k1.log ("Successfully installed ...").
+# Source: PHASE1-REPORT.md section 7 and the Phase 1 K1 build log of django-ninja ("Successfully installed ...", external evidence, not in this repository).
 # Used as a constraint file (pip-compile --constraint) when generating requirements.lock.txt, so the lock reproduces the measured set instead of re-resolving PyPI.
 annotated-types==0.6.0
 asgiref==3.8.1
