@@ -18,6 +18,7 @@ export function treeCtx(tree, { tag = null, ports = GOLDEN_PORTS, links = { code
     files: () => [...tree.keys()].sort(),
     read,
     exists: (p) => tree.has(p),
+    crlfInIndex: () => [...tree.keys()].filter((p) => (tree.get(p) ?? '').includes('\r')).sort(),
     lockHashes: () => lockHashLines(read),
     composePorts: async () => ports,
     links: async () => links,
@@ -58,7 +59,9 @@ export function realCtx(root, tag) {
     let v;
     if (existsSync(full)) {
       const buf = readFileSync(full);
-      v = buf.includes(0) ? undefined : buf.toString('utf8');
+      // CRLF is normalised away here: a Windows checkout with core.autocrlf turns LF files into CRLF, and the checks must not depend on that.
+      // The no-crlf check looks at what is committed (the index) instead, through crlfInIndex().
+      v = buf.includes(0) ? undefined : buf.toString('utf8').replace(/\r\n/g, '\n');
     }
     cache.set(p, v);
     return v;
@@ -68,6 +71,7 @@ export function realCtx(root, tag) {
     files: () => files,
     read,
     exists: (p) => existsSync(resolve(root, p)),
+    crlfInIndex: () => spawnSync('git', ['ls-files', '--eol'], { cwd: root, encoding: 'utf8' }).stdout.split('\n').filter((l) => /^i\/(crlf|mixed)\s/.test(l)).map((l) => l.split('\t')[1]).sort(),
     lockHashes: () => spawnSync('sh', ['tools/lock-hashes.sh'], { cwd: root, encoding: 'utf8' }).stdout,
     composePorts: async () => {
       const r = await run('docker', ['compose', '-f', 'compose.yaml', 'config', '--format', 'json'], root);

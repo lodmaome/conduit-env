@@ -341,10 +341,10 @@ export const CHECKS = [
     id: 'no-crlf', num: 'M1d',
     title: 'no CRLF in tracked text files',
     async run(ctx) {
-      const bad = textFiles(ctx).filter((f) => ctx.read(f).includes('\r'));
-      return bad.length ? no(`CR characters in: ${bad.join(', ')}`) : ok('no CR in any tracked text file');
+      const bad = ctx.crlfInIndex();
+      return bad.length ? no(`CR characters in the committed content of: ${bad.join(', ')}`) : ok('no CRLF or mixed line endings in any committed file (the index is checked, not the working tree)');
     },
-    fixture: { mutate: (t) => t.set('tools/x.sh', '#!/bin/sh\r\necho hi\r\n'), expect: /CR characters in: tools\/x\.sh/ },
+    fixture: { mutate: (t) => t.set('tools/x.sh', '#!/bin/sh\r\necho hi\r\n'), expect: /CR characters in the committed content of: tools\/x\.sh/ },
   },
   {
     id: 'lock-names', num: 'M1e',
