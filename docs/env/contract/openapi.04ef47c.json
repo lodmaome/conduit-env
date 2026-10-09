@@ -1,0 +1,1889 @@
+backend-sha7: 04ef47c
+requirements-lock-sha256: bc0cbf461a121bc93d8829a502887c3b6321e72c5335b7b9b828e188042c15d0
+build-tools-lock-sha256: 8d9339e27bd7cc752064a813d457ecebde5091e5d0799bb7fee8c297265cde64
+
+{
+  "components": {
+    "schemas": {
+      "ArticleCreateSchema": {
+        "properties": {
+          "article": {
+            "$ref": "#/components/schemas/ArticleInCreateSchema"
+          }
+        },
+        "required": [
+          "article"
+        ],
+        "title": "ArticleCreateSchema",
+        "type": "object"
+      },
+      "ArticleInCreateSchema": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "tagList": {
+            "default": {},
+            "items": {
+              "type": "string"
+            },
+            "title": "Taglist",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "body"
+        ],
+        "title": "ArticleInCreateSchema",
+        "type": "object"
+      },
+      "ArticleInPartialUpdateSchema": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "tagList": {
+            "default": {},
+            "items": {
+              "type": "string"
+            },
+            "title": "Taglist",
+            "type": "array"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ArticleInPartialUpdateSchema",
+        "type": "object"
+      },
+      "ArticlePartialUpdateSchema": {
+        "properties": {
+          "article": {
+            "$ref": "#/components/schemas/ArticleInPartialUpdateSchema"
+          }
+        },
+        "required": [
+          "article"
+        ],
+        "title": "ArticlePartialUpdateSchema",
+        "type": "object"
+      },
+      "CommentContainerSchemaIn": {
+        "properties": {
+          "comment": {
+            "$ref": "#/components/schemas/CommentSchemaIn"
+          }
+        },
+        "required": [
+          "comment"
+        ],
+        "title": "CommentContainerSchemaIn",
+        "type": "object"
+      },
+      "CommentOutContainerSchema": {
+        "properties": {
+          "comment": {
+            "$ref": "#/components/schemas/CommentOutSchema"
+          }
+        },
+        "required": [
+          "comment"
+        ],
+        "title": "CommentOutContainerSchema",
+        "type": "object"
+      },
+      "CommentOutSchema": {
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/ProfileSchema"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "ID"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "createdAt",
+          "updatedAt",
+          "author"
+        ],
+        "title": "CommentOutSchema",
+        "type": "object"
+      },
+      "CommentSchemaIn": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "CommentSchemaIn",
+        "type": "object"
+      },
+      "CommentsListOutSchema": {
+        "properties": {
+          "comments": {
+            "items": {
+              "$ref": "#/components/schemas/CommentOutSchema"
+            },
+            "title": "Comments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "comments"
+        ],
+        "title": "CommentsListOutSchema",
+        "type": "object"
+      },
+      "ErrorResponseType_Literal__expired_token____invalid_token____invalid_user____session_not_found____session_expired____token_reuse_detected___": {
+        "properties": {
+          "error_code": {
+            "enum": [
+              "expired_token",
+              "invalid_token",
+              "invalid_user",
+              "session_not_found",
+              "session_expired",
+              "token_reuse_detected"
+            ],
+            "title": "Error Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error_code"
+        ],
+        "title": "ErrorResponseType[Literal['expired_token', 'invalid_token', 'invalid_user', 'session_not_found', 'session_expired', 'token_reuse_detected']]",
+        "type": "object"
+      },
+      "ErrorResponseType_Literal__invalid_credentials___": {
+        "properties": {
+          "error_code": {
+            "const": "invalid_credentials",
+            "title": "Error Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error_code"
+        ],
+        "title": "ErrorResponseType[Literal['invalid_credentials']]",
+        "type": "object"
+      },
+      "ErrorResponseType_Literal__invalid_token_type___": {
+        "properties": {
+          "error_code": {
+            "const": "invalid_token_type",
+            "title": "Error Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error_code"
+        ],
+        "title": "ErrorResponseType[Literal['invalid_token_type']]",
+        "type": "object"
+      },
+      "ErrorResponseType_Literal__session_not_found___": {
+        "properties": {
+          "error_code": {
+            "const": "session_not_found",
+            "title": "Error Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error_code"
+        ],
+        "title": "ErrorResponseType[Literal['session_not_found']]",
+        "type": "object"
+      },
+      "GeoLocation": {
+        "description": "Where an IP address appears to be.\n\nReturned by the callable configured as JWT_GEOLOCATION_PROVIDER and stored\non the session at login. Every field is optional because providers differ\nin how much they can resolve for a given address.",
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          }
+        },
+        "title": "GeoLocation",
+        "type": "object"
+      },
+      "LoginSchema": {
+        "properties": {
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginSchema",
+        "type": "object"
+      },
+      "ProfileSchema": {
+        "properties": {
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "following": {
+            "title": "Following",
+            "type": "boolean"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "username": {
+            "maxLength": 60,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "following",
+          "bio",
+          "image",
+          "username"
+        ],
+        "title": "ProfileSchema",
+        "type": "object"
+      },
+      "RefreshTokenSchema": {
+        "properties": {
+          "refresh_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Token"
+          }
+        },
+        "title": "RefreshTokenSchema",
+        "type": "object"
+      },
+      "SessionResponse": {
+        "properties": {
+          "browser": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Browser"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "is_current": {
+            "default": false,
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "last_activity_at": {
+            "format": "date-time",
+            "title": "Last Activity At",
+            "type": "string"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeoLocation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "last_activity_at",
+          "ip_address"
+        ],
+        "title": "SessionResponse",
+        "type": "object"
+      },
+      "TokenSchema": {
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "refresh_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Token"
+          }
+        },
+        "required": [
+          "access_token"
+        ],
+        "title": "TokenSchema",
+        "type": "object"
+      },
+      "UserCreateSchema": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserInCreateSchema"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "title": "UserCreateSchema",
+        "type": "object"
+      },
+      "UserInCreateSchema": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "title": "Password",
+            "type": "string"
+          },
+          "username": {
+            "maxLength": 60,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "username"
+        ],
+        "title": "UserInCreateSchema",
+        "type": "object"
+      },
+      "UserInLoginSchema": {
+        "properties": {
+          "email": {
+            "maxLength": 254,
+            "title": "Email Address",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "UserInLoginSchema",
+        "type": "object"
+      },
+      "UserInPartialUpdateInSchema": {
+        "properties": {
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/_Empty"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": {},
+            "title": "Bio"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/_Empty"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": {},
+            "title": "Email"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/_Empty"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": {},
+            "title": "Image"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/_Empty"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": {},
+            "title": "Password"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/_Empty"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": {},
+            "title": "Username"
+          }
+        },
+        "title": "UserInPartialUpdateInSchema",
+        "type": "object"
+      },
+      "UserLoginSchema": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserInLoginSchema"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "title": "UserLoginSchema",
+        "type": "object"
+      },
+      "UserPartialUpdateInSchema": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserInPartialUpdateInSchema"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "title": "UserPartialUpdateInSchema",
+        "type": "object"
+      },
+      "_Empty": {
+        "description": "An instance of this class may be used to represent undefined data (different than None)\nwithout breaking the `openapi.json` generation used by Swagger, as this ends-up calling `to_jsonable_python` on it",
+        "properties": {},
+        "title": "_Empty",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "JWTAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "TokenAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "",
+    "title": "NinjaAPI",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/articles": {
+      "get": {
+        "operationId": "articles_api_list_articles",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "author",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Author"
+            }
+          },
+          {
+            "in": "query",
+            "name": "favorited",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Favorited"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "List Articles"
+      },
+      "post": {
+        "operationId": "articles_api_create_article",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleCreateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Create Article"
+      }
+    },
+    "/api/articles/feed": {
+      "get": {
+        "operationId": "articles_api_feed",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Feed"
+      }
+    },
+    "/api/articles/{slug}": {
+      "delete": {
+        "operationId": "articles_api_destroy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "204": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Destroy"
+      },
+      "get": {
+        "operationId": "articles_api_retrieve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Retrieve"
+      },
+      "put": {
+        "description": "This is wrong, but this method behaves like a PATCH, as required by the RealWorld API spec",
+        "operationId": "articles_api_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticlePartialUpdateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Update"
+      }
+    },
+    "/api/articles/{slug}/comments": {
+      "get": {
+        "operationId": "comments_api_list_comments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentsListOutSchema"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "List Comments"
+      },
+      "post": {
+        "operationId": "comments_api_create_comment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentContainerSchemaIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentOutContainerSchema"
+                }
+              }
+            },
+            "description": "Created"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Create Comment"
+      }
+    },
+    "/api/articles/{slug}/comments/{comment_id}": {
+      "delete": {
+        "operationId": "comments_api_delete_comment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "comment_id",
+            "required": true,
+            "schema": {
+              "title": "Comment Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Delete Comment"
+      }
+    },
+    "/api/articles/{slug}/favorite": {
+      "delete": {
+        "operationId": "articles_api_unfavorite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Unfavorite"
+      },
+      "post": {
+        "operationId": "articles_api_favorite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Favorite"
+      }
+    },
+    "/api/profiles/{username}": {
+      "get": {
+        "operationId": "accounts_api_get_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "title": "Username",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Get Profile"
+      }
+    },
+    "/api/profiles/{username}/follow": {
+      "delete": {
+        "operationId": "accounts_api_unfollow_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "title": "Username",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Unfollow Profile"
+      },
+      "post": {
+        "operationId": "accounts_api_follow_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "title": "Username",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Follow Profile"
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "operationId": "articles_api_list_tags",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "List Tags"
+      }
+    },
+    "/api/user": {
+      "get": {
+        "operationId": "accounts_api_get_user",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Get User"
+      },
+      "put": {
+        "description": "This is wrong, but this method behaves like a PATCH, as required by the RealWorld API spec",
+        "operationId": "accounts_api_put_user",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPartialUpdateInSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Put User"
+      }
+    },
+    "/api/users": {
+      "post": {
+        "operationId": "accounts_api_account_registration",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "Account Registration"
+      }
+    },
+    "/api/users/login": {
+      "post": {
+        "operationId": "accounts_api_account_login",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLoginSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Account Login"
+      }
+    },
+    "/auth/login/": {
+      "post": {
+        "description": "Supply a valid `username` and `password` to obtain a new `access_token` and `refresh_token`.",
+        "operationId": "jwt_ninja_api_login",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenSchema"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseType_Literal__invalid_credentials___"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Obtain a new access token",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/auth/logout/": {
+      "post": {
+        "description": "Log out of the current session.",
+        "operationId": "jwt_ninja_api_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ],
+        "summary": "Logout",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/auth/logout/all/": {
+      "post": {
+        "description": "Log out of all sessions.",
+        "operationId": "jwt_ninja_api_logout_all",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ],
+        "summary": "Logout from all sessions",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/auth/refresh/": {
+      "post": {
+        "description": "Supply a valid, unexpired `refresh_token` to obtain a new `access_token`.",
+        "operationId": "jwt_ninja_api_new_refresh_token",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RefreshTokenSchema"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenSchema"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseType_Literal__invalid_token_type___"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseType_Literal__expired_token____invalid_token____invalid_user____session_not_found____session_expired____token_reuse_detected___"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Refresh an access token",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/auth/sessions/": {
+      "get": {
+        "operationId": "jwt_ninja_api_list_active_sessions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ],
+        "summary": "List active sessions",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/auth/sessions/{session_id}/": {
+      "delete": {
+        "description": "Log out a single session by id. Revoking the current session is equivalent to `logout/`.",
+        "operationId": "jwt_ninja_api_revoke_session",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseType_Literal__session_not_found___"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ],
+        "summary": "Revoke a session",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    }
+  },
+  "servers": []
+}

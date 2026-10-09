@@ -140,3 +140,17 @@ The Windows path is handled with `pwd -W` and `MSYS_NO_PATHCONV=1`. File lists c
 
 **Known limitation, counted (requested):** the frontend `src` stage installs `git` from apt without pinning it: `apt-get install -y --no-install-recommends git` reported **17 newly installed** packages in a `--no-cache` build of that stage (`m2-evidence\t3\frontend-src-nocache.log`, seen), the same 17 as the backend's fetch stage. Both stages are throwaway and ship in no image; the unpinned apt surface is 76 packages in the backend image stage, 17 in the backend fetch stage and 17 in the frontend `src` stage.
 `PYTHON_IMAGE` is therefore now used by the frontend build as well as the backend (`THIRD-PARTY.md` will say so).
+
+## 6. OpenAPI snapshot (`docs/env/contract/`)
+
+**Probe** (`m2-evidence\t4\`, seen): the backend serves its document at **`/openapi.json`** on port 4181, not under `/api` (`/api/openapi.json`, `/api/docs`, `/api/schema`, `/api/openapi` and `/api/v1/openapi.json` answer 404; `/docs` answers 200 as HTML). Two raw fetches are byte-identical (23,090 bytes, the size Phase 1 recorded for the same backend).
+Document: OpenAPI 3.1.0, title "NinjaAPI", 25 operations (19 under `/api/`, 6 under `/auth/`).
+
+**Normalisation** (`tools/lib/openapi.mjs`): keys sorted at every level, arrays keep their order, 2-space indent, LF, one trailing newline; the tool refuses input that is not JSON or not OpenAPI. `tools/openapi-snapshot.mjs` fetches twice and refuses if the raw bodies differ.
+`sh tools/snapshot.sh` regenerates by hand: it refuses unless the running `api` image is `conduit-env/backend:$BACKEND_SHA` (so the header cannot describe a different backend than the document), prints the header with `tools/lock-hashes.sh`, one blank line, then the document. Regenerating twice gives a byte-identical file (`regen-identical.txt`, seen). No automatic regeneration gate in env-v1.
+
+**Decision to overrule if you disagree:** ADR 0001 says the snapshot "starts with a header" and is named `openapi.<backend-sha7>.json`. JSON cannot hold a header, so the file is three header lines, one blank line, then JSON, and **is not valid JSON as a whole** (`tail -n +5` parses it). The alternative (an `x-conduit-env` key inside the document, or a separate header file) would change what ADR 0001 section 2 specifies, so I did not take it. The format is stated in `docs/env/contract/README.md` and enforced by `splitSnapshot` in the tests.
+**Phase 1's canonical hash was not reproduced.** Phase 1 recorded `a8c0a6e9...aa5a3` for the canonical form of this document without recording the canonicalisation; four plausible formats (compact or indent 2, with or without a final LF) gave four other hashes (`hash-variants.txt`, seen). The raw size matches; the hashes are not comparable.
+
+**The six `/auth/` operations** (`POST /auth/login/`, `POST /auth/refresh/`, `GET /auth/sessions/`, `DELETE /auth/sessions/{session_id}/`, `POST /auth/logout/`, `POST /auth/logout/all/`) match PHASE1-REPORT section 14 and the served document. `docs/env/contract/README.md` lists them and says an attempt's coverage-gap flagger must exclude them.
+`tools/test/contract.test.mjs` fails if the README's table stops matching the snapshot's `/auth/` operations or the RealWorld count leaves 19, and has a presence control (removing an operation from the document makes the comparison unequal). 38 tests, 0 failed.
