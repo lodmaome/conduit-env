@@ -9,3 +9,7 @@ rules:
     level: error
   comments:
     min-spaces-from-content: 1
+  # compose.yaml sits at the repository root, where the environment may not ship a .gitattributes (attempt territory), so a Windows
+  # checkout with core.autocrlf=true has CRLF in it (found in the Milestone 2 clone rehearsal). Committed line endings are checked
+  # by the release gate (no-crlf, on the index) instead.
+  new-lines: disable
