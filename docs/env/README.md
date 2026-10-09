@@ -37,6 +37,12 @@ Every `up` runs the build step first (`pull_policy: build`), which is a quick ca
 | Database | `127.0.0.1:4182`, user `postgres`, password `0000`, database `postgres`. **The password is the upstream default, fixed, local-only.** |
 
 Ports are fixed. Changing one needs a rebuild of the frontend. The result is the empty initial state: migrations applied, no application rows, no users.
+For a build from scratch (no cache), run `docker compose build --no-cache` before `docker compose up -d --wait`.
+
+**Measured clone-to-healthy** (2026-10-09, one Windows 11 laptop, a rehearsal that followed these commands in a fresh clone; one run each): **cold** 56.7 s, which is the clone (0.3 s), `docker compose build --no-cache` (44.5 s) and `docker compose up -d --wait` (11.9 s);
+**warm** 11.4 s, the clone (0.3 s) and `up -d --wait` (11.1 s) with the build cache present. These do **not** include pulling the `postgres` image (12.3 s when it was measured separately) or a registry-cold pull of the Python, bun and nginx base images:
+all of those were already on the machine, so the first run on a machine without them is slower, by an amount not measured here. Compare an Actions boot against these numbers only with that in mind.
+Two clones on one machine share the project name `conduit-env` and the fixed ports, so run one stack at a time.
 
 ## Reset
 

@@ -48,13 +48,15 @@ The environment never ships that file, and its own checks bypass it. The rules b
 - **A top-level `name:` in the override, or `COMPOSE_PROJECT_NAME` anywhere, changes the project name.** `tools/reset.sh` and `tools/dump-state.sh` then refuse to run (the project guard); remove the name.
 - **A one-shot service in the override makes `up --wait` exit non-zero** (`container ... exited (0)`) unless another service depends on it with `service_completed_successfully`. Add long-running services, or keep one-shot runners out of `up`.
 - **Your built services need `pull_policy: build`**, as the environment's do. Images are tagged with a pinned value only, so without it a changed Dockerfile or build argument under the same tag silently reuses the old image.
+- **`-f compose.yaml up` with your extra service running prints a warning** `Found orphan containers (conduit-env-<service>-1) for this project` and leaves the service running (seen).
+- **Two clones share one project name** (`conduit-env`) and the fixed ports; starting the second recreates the project's containers (seen, after stopping the first). Run one stack at a time. (`docker compose ls` then lists the config files of every directory the project was started from.)
 - The stack's ports are fixed: frontend 4180, API 4181, database 4182, on `127.0.0.1` only. The frontend has the API origin `http://localhost:4181/api` built in, so changing a port means rebuilding it.
 
 **Which scripts honour the override, and which bypass it:**
 
 | Script | Override |
 |---|---|
-| `docker compose ...` without `-f`, `tools/reset.sh`, `tools/dump-state.sh` | **honoured** (auto-loaded). `reset.sh` resets the attempt's whole stack; a broken override makes the reset fail. |
+| `docker compose ...` without `-f`, `tools/reset.sh`, `tools/dump-state.sh` | **honoured** (auto-loaded). `reset.sh` resets the attempt's whole stack (seen: the extra service was stopped and started again). A broken override makes `reset.sh` **refuse** before it touches anything: the project guard cannot resolve the project name (seen). |
 | `node tools/verify.mjs` (default) | HTTP checks hit the fixed ports whatever runs there; its one `exec` uses `-f compose.yaml` (**bypassed**) |
 | `node tools/verify.mjs --fresh` | **bypassed** on purpose (`COMPOSE_FILE=compose.yaml`): it deletes the database volume, removes the project's orphans **including your extra services**, and brings up the bare environment. It prints this and is never the default. |
 | `tools/snapshot.sh`, `tools/python-licences.sh`, `tools/check-migrations-mutation.mjs`, `node tools/release-gate.mjs` | **bypassed** (`-f compose.yaml`) |
