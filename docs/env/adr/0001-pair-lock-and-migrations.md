@@ -85,7 +85,7 @@ The `--check --dry-run` form generates nothing and exits non-zero in that case, 
 - **One build, two names.** `migrate` and `api` share one build definition; Compose built it once and exported it under both service names.
 - **Upstream is fetched at build time, never vendored,** with `ADD <repo>#<sha>`. This also checks out the repos' **git submodules**, which the plan did not list:
   the backend has three (`realworld-apps/realworld`, `mutoe/vue3-realworld-example-app`, `khaledosman/react-redux-realworld-example-app`, about 5.7 MB, unused at runtime) and the frontend has one (`realworld-apps/realworld`).
-  The builds therefore depend on those four remote checkouts existing at the gitlinked commits. Phase 1's `docker buildx build <git-url>#<sha>` populated submodules the same way (observed there for angular's; `PHASE1-REPORT.md` section 5.1), so this is expected parity, not a verified one for the backend's image.
+  That is four checkouts from three distinct repositories (the spec is shared), and the builds depend on them existing at the gitlinked commits. Phase 1's `docker buildx build <git-url>#<sha>` populated submodules the same way (observed there for angular's; `PHASE1-REPORT.md` section 5.1), so this is expected parity, not a verified one for the backend's image.
   They need rows in `docs/env/THIRD-PARTY.md`.
 - **Safety statement.** The upstream defaults are insecure: PostgreSQL password `0000`, `ALLOWED_HOSTS=*`, Django `runserver`, wildcard CORS. That is acceptable only because every port is bound to `127.0.0.1`.
   Local and CI use only; not a production reference.
@@ -140,7 +140,7 @@ These need your decision or are known gaps. None blocks Milestone 1.
 3. **Where the migrations check runs.** Today inside the `migrate` one-shot (section 3). The alternative is a separate step in the Milestone 2 verify script.
 4. **The `include` indirection.** Verified: `-f compose.yaml`, an absolute `-f` from another directory, an override file via `-f`, and `COMPOSE_FILE` with a relative override path all merge cleanly onto the included services.
    Not verified: relative paths inside an attempt's override file (build contexts, bind mounts, `env_file`) against this layout; that belongs to the Milestone 3 attempt rehearsal.
-5. **Four extra build-time git remotes** (submodules, section 4). Accepting them is the simplest option and matches how Phase 1 fetched upstream. They are not in the brief's list of upstream components, so `THIRD-PARTY.md` needs rows for them.
+5. **Four extra build-time checkouts from three distinct repositories** (submodules, section 4; the `realworld` spec is shared by both apps). Accepting them is the simplest option and matches how Phase 1 fetched upstream. They are not in the brief's list of upstream components, so `THIRD-PARTY.md` needs rows for them.
 6. **`oven/bun:latest@sha256:...`.** The digest is the pin; the `latest` label only records what Phase 1 used. A drift report that resolves the tag will report a change whenever bun publishes a release, which is noise, not drift in the pin.
 7. **`env/SEED.txt` lists four files that do not exist yet** (`README.md`, `LICENSE`, two `.gitkeep`). The Milestone 2 and tag steps create them; creating them now was outside this milestone's scope.
 8. **Not re-run on the compose-built stack: the Hurl suite and a real-browser flow.** The claim that this stack behaves like the Phase 1 pair rests on identical dependency versions (31 of 31), identical PostgreSQL digest, identical schema, row counts and migrations, and the manual HTTP flow above.
