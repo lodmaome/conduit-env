@@ -34,7 +34,7 @@ Add this line to the attempt's own `CLAUDE.md`:
 ```
 
 **This import is unverified.** I have not shown that an assistant started in an attempt actually loads the file through that line. Until that is checked
-(deferred, see [adr/0003-env-v2-deferrals.md](adr/0003-env-v2-deferrals.md)), the prompt of the first attempt should check by hand that the agreement is loaded, for example by asking the assistant to quote rule 9 of section 1.
+(deferred, see [adr/0003-env-v2-deferrals.md](adr/0003-env-v2-deferrals.md)), the prompt of the first attempt should check by hand that the agreement is loaded, for example by asking the assistant to quote rule 9 of section 1. Every rule in section 1 says whom it applies to: **[everyone]**, **[environment repo only]** (not yours: for example the release gate and the stdlib-only tooling rule) or **[attempts only]** (written for you).
 
 ## 4. Extending the stack: `compose.override.yaml`
 

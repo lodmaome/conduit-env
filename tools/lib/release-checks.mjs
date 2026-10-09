@@ -313,6 +313,40 @@ export const CHECKS = [
     },
     fixture: { mutate: () => {}, links: { code: 2, text: '[ERROR] missing-file.md | Cannot find file' }, expect: /lychee exited 2/ },
   },
+  {
+    id: 'rule-scopes', num: 15,
+    title: 'every numbered rule of WORKING-AGREEMENT.md section 1 carries a scope tag, or every part of it does',
+    async run(ctx) {
+      const t = ctx.read('docs/env/WORKING-AGREEMENT.md');
+      if (t === undefined) return no('docs/env/WORKING-AGREEMENT.md does not exist');
+      const all = lines(t);
+      const start = all.findIndex((l) => /^## 1\./.test(l));
+      if (start < 0) return no('no "## 1." section');
+      let end = all.findIndex((l, i) => i > start && /^## /.test(l));
+      if (end < 0) end = all.length;
+      const sec = all.slice(start + 1, end);
+      const rules = [];
+      for (const l of sec) {
+        const m = /^(\d+)\. /.exec(l);
+        if (m) rules.push({ n: Number(m[1]), head: l, parts: [] });
+        else if (rules.length && /^ {3}- /.test(l)) rules[rules.length - 1].parts.push(l);
+      }
+      if (rules.length === 0) return no('section 1 has no numbered rules');
+      const TAG = /\*\*\[(everyone|environment repo only|attempts only)\]\*\*/;
+      for (const r of rules) {
+        if (TAG.test(r.head)) continue;
+        if (r.parts.length === 0) return no(`rule ${r.n} has no scope tag (use **[everyone]**, **[environment repo only]** or **[attempts only]**)`);
+        const bare = r.parts.find((p) => !TAG.test(p));
+        if (bare) return no(`rule ${r.n}: sub-bullet without a scope tag: "${bare.trim().slice(0, 50)}"`);
+      }
+      return ok(`${rules.length} rules, each tagged on its own line or on every part`);
+    },
+    fixtures: [
+      { name: 'a rule without a tag', mutate: (t) => t.set('docs/env/WORKING-AGREEMENT.md', t.get('docs/env/WORKING-AGREEMENT.md').replace('3. **[everyone]** ', '3. ')), expect: /rule 3 has no scope tag/ },
+      { name: 'a split rule with an untagged part', mutate: (t) => t.set('docs/env/WORKING-AGREEMENT.md', t.get('docs/env/WORKING-AGREEMENT.md').replace('   - **[attempts only]** b', '   - b')), expect: /rule 4: sub-bullet without a scope tag/ },
+      { name: 'no numbered rules', mutate: (t) => t.set('docs/env/WORKING-AGREEMENT.md', '# Working agreement\n\n## 1. Working rules\n\nnothing\n\n## 2. Tests\n'), expect: /no numbered rules/ },
+    ],
+  },
   // ---- ported from the Milestone 1 gate ----
   {
     id: 'root-files', num: 'M1a',

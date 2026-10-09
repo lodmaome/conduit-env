@@ -29,7 +29,7 @@ export function goldenTree() {
   t.set('docs/env/third-party/python-licences.txt', `requirements-lock-sha256: ${sha256(reqLock)}\nfoo 1 MIT\n`);
   t.set('docs/env/THIRD-PARTY.md', `| Name | Pin |\n|---|---|\n| \`BACKEND_SHA\` | backend | ${sha.slice(0, 12)} |\n| \`PYTHON_IMAGE\` | python | python ${'b'.repeat(12)} |\n| \`SHELLCHECK_IMAGE\` | shellcheck | koalaman/shellcheck ${'c'.repeat(12)} |\n`);
   t.set('docs/env/reset-and-boot.md', '# Reset\nuse tools/reset.sh\n');
-  t.set('docs/env/WORKING-AGREEMENT.md', '# Working agreement\n\nall written.\n');
+  t.set('docs/env/WORKING-AGREEMENT.md', '# Working agreement\n\n## 1. Working rules\n\n3. **[everyone]** probe.\n4. **Split rule.**\n   - **[environment repo only]** a\n   - **[attempts only]** b\n\n## 2. Tests\n\nall written.\n');
   t.set('docs/env/adr/0001-pair-lock-and-migrations.md', 'Record document: the old file was called constraints.txt.\n');
   t.set('docs/env/CHANGELOG.md', '# Changelog\n\n## env-v1 - 2026-01-01\n\n- class: pin, docs\n- merge: required\n');
   t.set('docs/attempt/.gitkeep', '');
