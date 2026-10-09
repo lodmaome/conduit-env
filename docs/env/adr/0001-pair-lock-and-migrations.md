@@ -61,7 +61,7 @@ A `--no-cache` regeneration, also after the rename and after the fetch method ch
   It covers a runtime package (`annotated-types`) and a build tool (`setuptools`). Result: control builds, both mutations fail with `THESE PACKAGES DO NOT MATCH THE HASHES FROM THE REQUIREMENTS FILE ... Expected sha256 000... Got 0641...`.
   Zeroing every hash is necessary: corrupting only one made pip fall back to another listed file of the same version and no mismatch was reported (a partial mutation proves nothing).
 
-**Snapshot header (decision "b+", extended to two lock files).** The served-OpenAPI snapshot (`docs/env/contract/openapi.<backend-sha7>.json`, Milestone 2) starts with a header that holds the backend sha7 and the hash of **each** lock file.
+**Snapshot header (decision "b+", extended to two lock files).** *(Superseded by ADR 0002 section 9: the header is now the root key `x-conduit-env` of one valid JSON document; the three names and values below are unchanged.)* The served-OpenAPI snapshot (`docs/env/contract/openapi.<backend-sha7>.json`, Milestone 2) starts with a header that holds the backend sha7 and the hash of **each** lock file.
 `tools/lock-hashes.sh` prints the header lines, exactly these three in this order:
 
 ```

@@ -19,7 +19,7 @@ The first release. Attempts start from it.
 - **Stack:** `compose.yaml` includes `env/stack.yaml`; order `db`, `migrate` (runs `migrate` only), `api`, `frontend`; ports 4180, 4181 and 4182 on `127.0.0.1` only.
 - **Backend lock:** hash-pinned `requirements.lock.txt` (31 packages) and `build-tools.lock.txt`, installed with `--require-hashes`; the backend source is fetched without its three unused submodules.
 - **Frontend:** the one required submodule is pinned as `FRONTEND_REALWORLD_SHA`, and the build fails if the gitlink or checkout differs.
-- **Contract:** `docs/env/contract/openapi.04ef47c.json`, with the header of lock hashes; six `/auth/` operations are not RealWorld.
+- **Contract:** `docs/env/contract/openapi.04ef47c.json`, with a root key `x-conduit-env` holding the lock hashes; six `/auth/` operations are not RealWorld.
 - **Tooling:** `tools/verify.mjs` (with a raw-CDP browser check), `tools/gate.sh`, `tools/release-gate.mjs`, the project guard for `tools/reset.sh`, the snapshot and licence generators.
 - **Docs:** README, ATTEMPTS, WORKING-AGREEMENT, THIRD-PARTY, FINDINGS, HOW-THIS-WAS-BUILT, ADRs 0001 to 0003.
 - **Seed files** shipped once: `README.md`, `LICENSE`, `docs/attempt/.gitkeep`.

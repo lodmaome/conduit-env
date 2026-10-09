@@ -81,19 +81,22 @@ for (const c of CHECKS) {
   if (c.id === 'internal-links') control = await c.run(treeCtx(base)); // stub returns code 0
   control.ok ? sp('PASS', `[${fmt(c.num)}] ${c.id}: control passes${control.skipped ? ' (visibly skipped)' : ''}: ${control.text}`) : sp('FAIL', `[${fmt(c.num)}] ${c.id}: control FAILED on the golden tree: ${control.text}`);
 
-  // fixture: one deliberate defect, the check must fail with the expected message
-  const tree = goldenTree();
-  c.fixture.mutate(tree);
-  const opts = { tag: c.fixture.tag ?? controlTag };
-  if (c.fixture.ports) opts.ports = c.fixture.ports;
-  if (c.fixture.links) opts.links = c.fixture.links;
-  let repo;
-  if (c.fixture.gitFixture === 'seed-changed') { repo = makeSeedRepo(true); opts.git = gitOps(repo.dir); }
-  let res;
-  try { res = await c.run(treeCtx(tree, opts)); } finally { if (repo) dropSeedRepo(repo); }
-  if (res.ok) sp('FAIL', `[${fmt(c.num)}] ${c.id}: the failing fixture PASSED (the check cannot fail): ${res.text}`);
-  else if (!c.fixture.expect.test(res.text)) sp('FAIL', `[${fmt(c.num)}] ${c.id}: failed, but not as expected (/${c.fixture.expect.source}/): ${res.text}`);
-  else sp('PASS', `[${fmt(c.num)}] ${c.id}: fixture fails as intended: ${res.text.slice(0, 140)}`);
+  // fixtures: one deliberate defect each, the check must fail with the expected message
+  for (const fx of c.fixtures) {
+    const tree = goldenTree();
+    fx.mutate(tree);
+    const opts = { tag: fx.tag ?? controlTag };
+    if (fx.ports) opts.ports = fx.ports;
+    if (fx.links) opts.links = fx.links;
+    let repo;
+    if (fx.gitFixture === 'seed-changed') { repo = makeSeedRepo(true); opts.git = gitOps(repo.dir); }
+    let res;
+    try { res = await c.run(treeCtx(tree, opts)); } finally { if (repo) dropSeedRepo(repo); }
+    const label = fx.name ? ` (${fx.name})` : '';
+    if (res.ok) sp('FAIL', `[${fmt(c.num)}] ${c.id}${label}: the failing fixture PASSED (the check cannot fail): ${res.text}`);
+    else if (!fx.expect.test(res.text)) sp('FAIL', `[${fmt(c.num)}] ${c.id}${label}: failed, but not as expected (/${fx.expect.source}/): ${res.text}`);
+    else sp('PASS', `[${fmt(c.num)}] ${c.id}${label}: fixture fails as intended: ${res.text.slice(0, 140)}`);
+  }
 }
 
 // check 14 for real: lychee on the broken and the clean markdown fixture, through tools/gate.sh

@@ -13,6 +13,7 @@
 // }
 // A check returns { ok, text } or { ok: true, skipped: true, text }. `fixture` says how to break a golden tree so that this check fails.
 import { createHash } from 'node:crypto';
+import { HEADER_KEYS, SNAPSHOT_KEY, parseLockHashes, parseSnapshot } from './openapi.mjs';
 
 const lines = (s) => String(s ?? '').split(/\r?\n/);
 const isComment = (l) => /^\s*(#|$)/.test(l);
@@ -96,6 +97,14 @@ export function findSecrets(path, text) {
     .map((h) => `${path}:${h.line} (${h.pattern})`);
 }
 
+// Fixture helper: rewrites the golden snapshot's x-conduit-env (fn mutates the header object), or removes it (fn === null).
+function mutateSnapshot(tree, fn) {
+  const p = Array.from(tree.keys()).find((k) => /^docs\/env\/contract\/openapi\.[0-9a-f]{7}\.json$/.test(k));
+  const doc = JSON.parse(tree.get(p));
+  if (fn === null) delete doc[SNAPSHOT_KEY]; else fn(doc[SNAPSHOT_KEY]);
+  tree.set(p, `${JSON.stringify(doc, null, 2)}\n`);
+}
+
 const ok = (text) => ({ ok: true, text });
 const no = (text) => ({ ok: false, text });
 const skip = (text) => ({ ok: true, skipped: true, text });
@@ -160,22 +169,26 @@ export const CHECKS = [
   },
   {
     id: 'snapshot-header', num: 5,
-    title: 'snapshot header: backend sha7 and both lock hashes equal tools/lock-hashes.sh',
+    title: 'snapshot x-conduit-env: backend sha7 and both lock hashes equal tools/lock-hashes.sh; the snapshot is valid JSON',
     async run(ctx) {
       const snaps = ctx.files().filter((f) => /^docs\/env\/contract\/openapi\.[0-9a-f]{7}\.json$/.test(f));
       if (snaps.length !== 1) return no(`expected exactly one docs/env/contract/openapi.<sha7>.json, found ${snaps.length}`);
-      const head = lines(ctx.read(snaps[0])).slice(0, 3).join('\n');
-      const want = ctx.lockHashes().trim();
-      const sha7 = /backend-sha7: ([0-9a-f]{7})/.exec(want)?.[1];
-      if (!snaps[0].includes(`openapi.${sha7}.json`)) return no(`the file name ${snaps[0]} does not carry the backend sha7 ${sha7}`);
-      if (head !== want) {
-        const a = head.split('\n'); const b = want.split('\n');
-        const i = b.findIndex((l, k) => l !== a[k]);
-        return no(`header line ${i + 1} differs: snapshot "${a[i]}", tools/lock-hashes.sh "${b[i]}"`);
+      let snap;
+      try { snap = parseSnapshot(ctx.read(snaps[0])); } catch (e) { return no(`${snaps[0]}: ${e.message}`); }
+      const want = parseLockHashes(ctx.lockHashes());
+      if (!snaps[0].includes(`openapi.${want['backend-sha7']}.json`)) return no(`the file name ${snaps[0]} does not carry the backend sha7 ${want['backend-sha7']}`);
+      for (const k of HEADER_KEYS) {
+        if (snap.header[k] !== want[k]) return no(`x-conduit-env.${k} differs: snapshot "${snap.header[k]}", tools/lock-hashes.sh "${want[k]}"`);
       }
-      return ok(`${snaps[0]} header equals tools/lock-hashes.sh (3 lines)`);
+      return ok(`${snaps[0]} is valid JSON and its x-conduit-env equals tools/lock-hashes.sh (3 values)`);
     },
-    fixture: { mutate: (t) => t.set('docs/env/contract/openapi.aaaaaaa.json', t.get('docs/env/contract/openapi.aaaaaaa.json').replace(/build-tools-lock-sha256: .*/, 'build-tools-lock-sha256: 0000')), expect: /header line 3 differs/ },
+    fixtures: [
+      { name: 'changed sha7', mutate: (t) => mutateSnapshot(t, (h) => { h['backend-sha7'] = 'bbbbbbb'; }), expect: /x-conduit-env\.backend-sha7 differs: snapshot "bbbbbbb"/ },
+      { name: 'changed requirements hash', mutate: (t) => mutateSnapshot(t, (h) => { h['requirements-lock-sha256'] = '0'.repeat(64); }), expect: /x-conduit-env\.requirements-lock-sha256 differs/ },
+      { name: 'changed build-tools hash', mutate: (t) => mutateSnapshot(t, (h) => { h['build-tools-lock-sha256'] = '0'.repeat(64); }), expect: /x-conduit-env\.build-tools-lock-sha256 differs/ },
+      { name: 'missing x-conduit-env', mutate: (t) => mutateSnapshot(t, null), expect: /no root key x-conduit-env/ },
+      { name: 'not valid JSON', mutate: (t) => { const p = 'docs/env/contract/openapi.aaaaaaa.json'; t.set(p, `backend-sha7: aaaaaaa\n\n${t.get(p)}`); }, expect: /is not valid JSON/ },
+    ],
   },
   {
     id: 'ports', num: 6,
@@ -367,5 +380,8 @@ export const CHECKS = [
     fixture: { mutate: (t) => t.set('env/stack.yaml', `${t.get('env/stack.yaml')}    command: [python, manage.py, makemigrations, --check]\n`), expect: /contains --check outside a comment/ },
   },
 ];
+
+// Every check has one or more failing fixtures; a check that defines only `fixture` gets a one-element `fixtures`.
+for (const c of CHECKS) c.fixtures ??= [c.fixture];
 
 export { sha256 };

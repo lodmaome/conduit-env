@@ -20,5 +20,5 @@ Three things were considered for env-v1 and deliberately left out. Each is liste
 ## 3. A snapshot regeneration gate
 
 **Idea.** A CI job that regenerates the OpenAPI snapshot from a freshly built stack and fails when it differs from the committed file, so a drifting backend is caught automatically.
-**Instead, in env-v1:** `sh tools/snapshot.sh` regenerates by hand, and the release gate checks that the snapshot's header (backend sha7 and both lock-file hashes) equals the current pins. That catches a changed pin or lock with a stale snapshot, but not a changed served document under unchanged pins (for example a base-image or apt change that alters the output).
+**Instead, in env-v1:** `sh tools/snapshot.sh` regenerates by hand, and the release gate checks that the snapshot's `x-conduit-env` key (backend sha7 and both lock-file hashes) equals the current pins. That catches a changed pin or lock with a stale snapshot, but not a changed served document under unchanged pins (for example a base-image or apt change that alters the output).
 **Trigger:** the first pin bump (`class: pin`), or a drift report that shows a changed served document under unchanged pins, whichever is first.

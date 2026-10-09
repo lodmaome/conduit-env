@@ -2,6 +2,7 @@
 // (the check's `fixture.mutate`) and requires that exact check to fail; the unbroken tree is the control that must pass.
 // Hashes here are made up and self-consistent; nothing in this file describes the real environment.
 import { sha256 } from './release-checks.mjs';
+import { buildSnapshot } from './openapi.mjs';
 
 export const GOLDEN_LICENSE = 'MIT License\n\nCopyright (c) 2026 lodmaome\n\nPermission is hereby granted (golden test text, not a real licence body).\n';
 
@@ -24,7 +25,7 @@ export function goldenTree() {
   t.set('env/backend/requirements.lock.txt', reqLock);
   t.set('env/backend/build-tools.lock.txt', toolsLock);
   const header = [`backend-sha7: ${sha.slice(0, 7)}`, `requirements-lock-sha256: ${sha256(reqLock)}`, `build-tools-lock-sha256: ${sha256(toolsLock)}`];
-  t.set(`docs/env/contract/openapi.${sha.slice(0, 7)}.json`, `${header.join('\n')}\n\n{"openapi":"3.1.0","paths":{}}\n`);
+  t.set(`docs/env/contract/openapi.${sha.slice(0, 7)}.json`, buildSnapshot('{"openapi":"3.1.0","paths":{}}', `${header.join('\n')}\n`));
   t.set('docs/env/third-party/python-licences.txt', `requirements-lock-sha256: ${sha256(reqLock)}\nfoo 1 MIT\n`);
   t.set('docs/env/THIRD-PARTY.md', `| Name | Pin |\n|---|---|\n| \`BACKEND_SHA\` | backend | ${sha.slice(0, 12)} |\n| \`PYTHON_IMAGE\` | python | python ${'b'.repeat(12)} |\n| \`SHELLCHECK_IMAGE\` | shellcheck | koalaman/shellcheck ${'c'.repeat(12)} |\n`);
   t.set('docs/env/reset-and-boot.md', '# Reset\nuse tools/reset.sh\n');

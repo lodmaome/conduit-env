@@ -1,3 +1,3 @@
-# The snapshot is byte-sensitive (header lines, normalised JSON): force LF in every checkout, like env/ and tools/.
+# The snapshot is byte-sensitive (normalised JSON with the x-conduit-env lock hashes): force LF in every checkout, like env/ and tools/.
 # There is deliberately no root .gitattributes (attempt territory).
 * text eol=lf

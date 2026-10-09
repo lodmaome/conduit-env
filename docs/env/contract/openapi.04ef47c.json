@@ -1,7 +1,3 @@
-backend-sha7: 04ef47c
-requirements-lock-sha256: bc0cbf461a121bc93d8829a502887c3b6321e72c5335b7b9b828e188042c15d0
-build-tools-lock-sha256: 8d9339e27bd7cc752064a813d457ecebde5091e5d0799bb7fee8c297265cde64
-
 {
   "components": {
     "schemas": {
@@ -1885,5 +1881,10 @@ build-tools-lock-sha256: 8d9339e27bd7cc752064a813d457ecebde5091e5d0799bb7fee8c29
       }
     }
   },
-  "servers": []
+  "servers": [],
+  "x-conduit-env": {
+    "backend-sha7": "04ef47c",
+    "build-tools-lock-sha256": "8d9339e27bd7cc752064a813d457ecebde5091e5d0799bb7fee8c297265cde64",
+    "requirements-lock-sha256": "bc0cbf461a121bc93d8829a502887c3b6321e72c5335b7b9b828e188042c15d0"
+  }
 }

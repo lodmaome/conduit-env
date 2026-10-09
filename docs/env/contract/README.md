@@ -3,16 +3,18 @@
 `openapi.04ef47c.json` is the OpenAPI document the pinned backend serves (`GET http://127.0.0.1:4181/openapi.json`; it is served at the root, not under `/api`),
 normalised: keys sorted at every level, 2-space indent, LF, one trailing newline. Two fetches of the live document are byte-identical (checked on every regeneration).
 
-**The file is not valid JSON as a whole.** It starts with a three-line header, then one blank line, then the JSON. Drop the first four lines to parse it (`tail -n +5`).
-The header is exactly what `sh tools/lock-hashes.sh` prints:
+**The file is one valid JSON document.** It is the normalised OpenAPI object plus a root key `x-conduit-env` (an OpenAPI extension key). Its three values are exactly what `sh tools/lock-hashes.sh` prints, under those names:
 
-```
-backend-sha7: <first 7 hex characters of BACKEND_SHA in env/pins.env>
-requirements-lock-sha256: <sha256 of env/backend/requirements.lock.txt>
-build-tools-lock-sha256: <sha256 of env/backend/build-tools.lock.txt>
+```json
+"x-conduit-env": {
+  "backend-sha7": "<first 7 hex characters of BACKEND_SHA in env/pins.env>",
+  "build-tools-lock-sha256": "<sha256 of env/backend/build-tools.lock.txt>",
+  "requirements-lock-sha256": "<sha256 of env/backend/requirements.lock.txt>"
+}
 ```
 
-The release gate recomputes those three lines and requires them to equal the file's header, so a changed backend pin or lock file with a stale snapshot fails the gate.
+Keys are sorted at every level, so they appear in alphabetical order. To use the document as the OpenAPI contract, drop that one root key; everything else is what the backend serves.
+The release gate recomputes the three values and requires them to equal the file's `x-conduit-env`, so a changed backend pin or lock file with a stale snapshot fails the gate; a file that is not valid JSON or has no such key fails it too.
 Regeneration is by hand: `sh tools/snapshot.sh` (the stack must be running and built from the pins; the script refuses otherwise). There is no automatic regeneration gate in env-v1.
 
 ## The six operations that are not RealWorld

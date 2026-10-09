@@ -41,12 +41,14 @@ for (const c of CHECKS) {
     const controlTag = c.needsTag ? 'env-v1' : null;
     const control = await c.run(treeCtx(goldenTree(), { tag: controlTag }));
     assert.equal(control.ok, true, `control failed: ${control.text}`);
-    if (c.fixture.gitFixture) return; // needs a temp git repository: covered by `node tools/release-gate.mjs --self-test`
-    const tree = goldenTree();
-    c.fixture.mutate(tree);
-    const res = await c.run(treeCtx(tree, { tag: c.fixture.tag ?? controlTag, ...(c.fixture.ports ? { ports: c.fixture.ports } : {}), ...(c.fixture.links ? { links: c.fixture.links } : {}) }));
-    assert.equal(res.ok, false, `fixture passed: ${res.text}`);
-    assert.match(res.text, c.fixture.expect);
+    for (const fx of c.fixtures) {
+      if (fx.gitFixture) continue; // needs a temp git repository: covered by `node tools/release-gate.mjs --self-test`
+      const tree = goldenTree();
+      fx.mutate(tree);
+      const res = await c.run(treeCtx(tree, { tag: fx.tag ?? controlTag, ...(fx.ports ? { ports: fx.ports } : {}), ...(fx.links ? { links: fx.links } : {}) }));
+      assert.equal(res.ok, false, `fixture ${fx.name ?? ''} passed: ${res.text}`);
+      assert.match(res.text, fx.expect);
+    }
   });
 }
 

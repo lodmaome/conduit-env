@@ -1,5 +1,5 @@
 #!/bin/sh
-# Prints the lock-file lines of the OpenAPI snapshot header (decision "b+", ADR 0001 section 6) and checks nothing else.
+# Prints the lock-file lines of the OpenAPI snapshot's `x-conduit-env` values (decision "b+", ADR 0001 section 6) and checks nothing else.
 # Output, exactly these three lines in this order:
 #   backend-sha7: <first 7 hex chars of BACKEND_SHA in env/pins.env>
 #   requirements-lock-sha256: <sha256 of env/backend/requirements.lock.txt>
