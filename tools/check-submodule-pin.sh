@@ -13,7 +13,7 @@
 # on error and on INT, TERM or HUP; builds export no image (type=cacheonly), so no untagged image is left behind.
 set -u
 root="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$root"
+cd "$root" || exit 1
 . ./env/pins.env
 
 work=".submodule-check"

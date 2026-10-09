@@ -6,6 +6,7 @@
 # Refuses unless Compose resolves the project name to exactly conduit-env (tools/project-guard.sh), and passes -p on both commands.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=project-guard.sh
 . "$here/project-guard.sh"
 cd "$here/.."
 require_project || exit 1

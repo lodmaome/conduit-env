@@ -2,6 +2,7 @@
 # Tests tools/project-guard.sh through tools/reset.sh and tools/dump-state.sh against a FAKE docker on PATH that only logs its argv.
 # The real docker is never called: every run asserts that `docker` resolves to the fake first.
 # usage: sh tools/test-project-guard.sh        exit status = number of failed checks
+# shellcheck disable=SC2015  # pass() always returns 0, so `A && pass || fail` is a true if-then-else in this file
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 T=$(mktemp -d) || exit 99
@@ -56,11 +57,11 @@ refuse() {
 
 for s in reset.sh dump-state.sh; do
   arg=""; [ "$s" = dump-state.sh ] && arg="$T/dump-$s"
-  refuse "$s name=docker" docker "resolves the project name to 'docker', not 'conduit-env'.*" "$here/$s" $arg
-  refuse "$s name=other" other "resolves the project name to 'some-other-project'" "$here/$s" $arg
-  refuse "$s empty output" empty "printed no top-level 'name:' line" "$here/$s" $arg
-  refuse "$s config exits non-zero" fail "exited 1, so the project name could not be resolved" "$here/$s" $arg
-  refuse "$s two name lines" multi "more than one top-level 'name:' line" "$here/$s" $arg
+  refuse "$s name=docker" docker "resolves the project name to 'docker', not 'conduit-env'.*" "$here/$s" ${arg:+"$arg"}
+  refuse "$s name=other" other "resolves the project name to 'some-other-project'" "$here/$s" ${arg:+"$arg"}
+  refuse "$s empty output" empty "printed no top-level 'name:' line" "$here/$s" ${arg:+"$arg"}
+  refuse "$s config exits non-zero" fail "exited 1, so the project name could not be resolved" "$here/$s" ${arg:+"$arg"}
+  refuse "$s two name lines" multi "more than one top-level 'name:' line" "$here/$s" ${arg:+"$arg"}
   [ ! -e "$T/dump-$s" ] && pass "$s refusal wrote no output directory" || fail "$s refusal created an output directory"
 done
 run hint docker "$here/reset.sh"
@@ -87,6 +88,7 @@ mkdir "$T/cwd"
 
 # mutation: dump-state.sh without the absolute-path line puts the relative directory under its repo root (here a temp tree)
 mkdir -p "$T/mut2/tools"; cp "$here/project-guard.sh" "$T/mut2/tools/"
+# shellcheck disable=SC2016  # the literal $out is intended: this matches the script's own text
 grep -v '^case "\$out" in' "$here/dump-state.sh" > "$T/mut2/tools/dump-state.sh"
 cmp -s "$here/dump-state.sh" "$T/mut2/tools/dump-state.sh" && fail "mutation 2 did not change dump-state.sh" || pass "mutation 2 applied: absolute-path line removed"
 [ "$(command -v docker)" = "$T/bin/docker" ] || { echo "ABORT: docker is not the fake before running mutant 2"; exit 99; }

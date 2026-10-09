@@ -13,7 +13,7 @@
 # (type=cacheonly), so the tool leaves no untagged image behind either.
 set -u
 root="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$root"
+cd "$root" || exit 1
 . ./env/pins.env
 
 work=".lock-check"
