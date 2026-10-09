@@ -11,14 +11,17 @@ Stopgap written in Milestone 1. `docs/env/README.md` (Milestone 2) will absorb i
 
 ## Reset and boot
 
-Run these from the repository root, one after the other. They are two separate commands on purpose: Windows PowerShell 5.1 has no `&&`.
+Prefer `sh tools/reset.sh` (on Windows use Git Bash or WSL). It refuses to run unless Compose resolves the project name to exactly `conduit-env`
+(see "Project guard" below). If you type the commands yourself, keep `-p conduit-env`: without it an environment variable, a root `.env` or an
+override file can silently point `down -v` at a different project. Run these from the repository root, one after the other
+(two separate commands on purpose: Windows PowerShell 5.1 has no `&&`):
 
 ```bash
-docker compose down -v --remove-orphans
-docker compose up -d --wait
+docker compose -p conduit-env down -v --remove-orphans
+docker compose -p conduit-env up -d --wait
 ```
 
-`tools/reset.sh` runs the same two commands (`sh tools/reset.sh`; on Windows use Git Bash or WSL).
+`tools/reset.sh` runs the same two commands, with the guard in front.
 
 What this does:
 
@@ -51,8 +54,8 @@ docker compose build --no-cache
 
 ```bash
 sh tools/dump-state.sh state-a
-docker compose down -v --remove-orphans
-docker compose up -d --wait
+docker compose -p conduit-env down -v --remove-orphans
+docker compose -p conduit-env up -d --wait
 sh tools/dump-state.sh state-b
 diff -r state-a state-b
 ```
@@ -63,3 +66,10 @@ The dump holds the schema, exact row counts per table, the applied migrations an
 ## Not state-neutral
 
 The API has no user-delete endpoint, so anything you register stays until the next reset.
+
+## Project guard
+
+Compose chooses the project name by precedence, and the `name: conduit-env` in `compose.yaml` comes last: `-p`, then `COMPOSE_PROJECT_NAME` in the
+environment, then in a root `.env`, then a top-level `name:` in a merged file such as `compose.override.yaml`. `tools/reset.sh` and `tools/dump-state.sh`
+resolve the name first (`docker compose config`, same directory, environment and files as the commands that follow) and stop unless it is exactly `conduit-env`.
+The message names the resolved name and what to unset or change. Measurements: ADR 0002, section 1.

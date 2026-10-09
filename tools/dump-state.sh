@@ -6,11 +6,14 @@
 # data.txt leaves out django_migrations because that table holds the time each migration was applied.
 set -eu
 out="${1:?usage: tools/dump-state.sh <output-dir>}"
-cd "$(dirname "$0")/.."
+here=$(cd "$(dirname "$0")" && pwd)
+. "$here/project-guard.sh"
+cd "$here/.."
+require_project || exit 1
 mkdir -p "$out"
 
-psql() { docker compose exec -T db psql -U postgres -d postgres -At -F ' ' "$@"; }
-dump() { docker compose exec -T db pg_dump -U postgres -d postgres "$@" | grep -v -E '^\\(un)?restrict '; }
+psql() { docker compose -p "$PROJECT" exec -T db psql -U postgres -d postgres -At -F ' ' "$@"; }
+dump() { docker compose -p "$PROJECT" exec -T db pg_dump -U postgres -d postgres "$@" | grep -v -E '^\\(un)?restrict '; }
 
 dump --schema-only > "$out/schema.txt"
 dump --data-only --exclude-table=django_migrations > "$out/data.txt"
