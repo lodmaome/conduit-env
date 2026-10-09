@@ -64,6 +64,8 @@ const textFiles = (ctx) => ctx.files().filter((f) => ctx.read(f) !== undefined);
 // Credential-looking text. The documented local database password (the upstream default, "0000", published on 127.0.0.1 only) is the
 // one exception, recognised by its VALUE wherever it appears (env/stack.yaml, the runbook, the reports that quote upstream's defaults).
 export const DOCUMENTED_LOCAL_PASSWORD = '0000';
+// The gate's own sources and tests hold deliberately fake secrets (fixtures for this very scan); nothing else is exempt.
+export const SECRET_SCAN_EXEMPT = ['tools/lib/release-checks.mjs', 'tools/test/release.test.mjs'];
 export const SECRET_PATTERNS = [
   { name: 'JWT-shaped string', re: /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/g },
   {
@@ -251,12 +253,13 @@ export const CHECKS = [
     id: 'secrets', num: 11,
     title: 'secret scan of tracked files (JWT-shaped strings, credential-looking lines; the documented local POSTGRES_PASSWORD is the one exception)',
     async run(ctx) {
-      const hits = textFiles(ctx).flatMap((f) => findSecrets(f, ctx.read(f)));
+      const scanned = textFiles(ctx).filter((f) => !SECRET_SCAN_EXEMPT.includes(f));
+      const hits = scanned.flatMap((f) => findSecrets(f, ctx.read(f)));
       // presence control: the documented exception exists in this tree and would be flagged without its exemption
       const stack = ctx.read('env/stack.yaml') ?? '';
       const raw = rawSecretMatches(stack).filter((h) => h.value === DOCUMENTED_LOCAL_PASSWORD);
       if (raw.length === 0) return no('presence control failed: the documented local password (value 0000) in env/stack.yaml was not seen by the raw patterns, so the scan may be blind');
-      return hits.length ? no(`${hits.length} finding(s): ${hits.slice(0, 8).join('; ')}`) : ok(`no finding in ${textFiles(ctx).length} files (control: ${raw.length} raw pattern hit(s) in env/stack.yaml are the documented local database password)`);
+      return hits.length ? no(`${hits.length} finding(s): ${hits.slice(0, 8).join('; ')}`) : ok(`no finding in ${scanned.length} files, ${textFiles(ctx).length - scanned.length} exempt as synthetic fixtures (control: ${raw.length} raw pattern hit(s) in env/stack.yaml are the documented local database password)`);
     },
     fixture: { mutate: (t) => t.set('docs/env/notes.md', 'token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijk\napi_key = abcdef1234567890\n'), expect: /2 finding\(s\)/ },
   },
