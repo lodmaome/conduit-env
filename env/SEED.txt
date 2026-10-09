@@ -4,9 +4,11 @@
 #
 # One exact path per line, relative to the repository root. Lines starting with "#" and blank lines are comments.
 #
-# Status at Milestone 1: none of these exist yet. README.md and LICENSE are written in Milestone 2; the two
-# placeholders are created with the env-v1 tag. Listing them here now fixes the allow-list; it does not create them.
+# Status at Milestone 1: none of these exist yet. README.md and LICENSE are written in Milestone 2; the placeholder
+# is created with the env-v1 tag. Listing them here now fixes the allow-list; it does not create them.
+#
+# There is no attempt/ placeholder: an attempt extends the stack with compose.override.yaml at the repository root, which the
+# environment never ships (docs/env/adr/0001, section 4).
 README.md
 LICENSE
-attempt/.gitkeep
 docs/attempt/.gitkeep
