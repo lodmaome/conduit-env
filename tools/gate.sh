@@ -2,6 +2,7 @@
 # The gate's tooling: shellcheck, actionlint, yamllint, hadolint and lychee as digest-pinned containers, plus `docker compose config` and `node --test` on the host.
 #
 # usage: sh tools/gate.sh [--online]        exit status = number of failed checks
+#        sh tools/gate.sh --links-only [files]   only lychee (offline) on the files, or on every tracked .md file
 #   --online   also run lychee against external links. INFORMATIONAL: it never changes the exit status (a third-party outage must not fail the gate).
 #
 # This is the ONLY place in the repository that uses `docker run --rm` (the Docker rule, ADR 0001 section 5, exemption 2). Every container:
@@ -21,8 +22,15 @@ fi
 . ./env/gate/tools.env
 
 online=0
+links_only=0
+files_args=""
 for a in "$@"; do
-  case "$a" in --online) online=1 ;; *) echo "unknown argument: $a"; echo "usage: sh tools/gate.sh [--online]"; exit 90 ;; esac
+  case "$a" in
+    --online) online=1 ;;
+    --links-only) links_only=1 ;;
+    -*) echo "unknown argument: $a"; echo "usage: sh tools/gate.sh [--online]   |   sh tools/gate.sh --links-only [markdown files...]"; exit 90 ;;
+    *) files_args="$files_args $a" ;;
+  esac
 done
 
 work="$(mktemp -d)" || exit 90
@@ -90,6 +98,16 @@ fixture() {
   else bad "fixture $_name: $_bad failed, but not for the expected reason (/$_re/): $(printf '%s' "$out" | head -n 5)"; fi
   if out="$($_runner "$FIX$_good" 2>&1)"; then pass "fixture $_name: control $_good passes"; else bad "fixture $_name: control $_good FAILED: $(printf '%s' "$out" | head -n 5)"; fi
 }
+
+# --links-only [files]: only lychee (offline: internal links and anchors), on the given files or on every tracked .md file.
+# Used by the release gate (check 14). Exit 0 when every link and anchor resolves, 2 otherwise.
+if [ "$links_only" -eq 1 ]; then
+  if [ -z "$files_args" ]; then files_args="$(list '\.md$')"; fi
+  # shellcheck disable=SC2086  # one path per line without spaces
+  if out="$(t_lychee $files_args 2>&1)"; then echo "lychee: internal links and anchors resolve"; exit 0; fi
+  printf '%s\n' "$out" | tail -n 25
+  exit 2
+fi
 
 echo "== digest guard"
 if (require_digest "alpine:3.20" > /dev/null 2>&1); then bad "a tag-only image reference was accepted"; else pass "a tag-only reference is refused"; fi
