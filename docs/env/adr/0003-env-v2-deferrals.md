@@ -9,7 +9,8 @@ Three things were considered for env-v1 and deliberately left out. Each is liste
 
 **Idea.** A tool that compares an attempt's OWNED paths against the env tag it claims to be on, so that an attempt that edited an environment file is caught mechanically.
 **Instead, in env-v1:** `env/OWNED.txt` is a documented allow-list and the release gate checks, for the environment repository itself, that every tracked file is OWNED or SEED. Nothing checks an attempt.
-**Trigger:** at the start of attempt 2, hand-diff attempt 1's OWNED paths against its env tag (`git diff env-vN -- compose.yaml env tools docs/env`). If that diff is not empty, or the hand-diff is tedious, build the runner.
+**Trigger:** at the start of attempt 2, hand-diff attempt 1's OWNED paths against its env tag (`git diff env-vN -- compose.yaml env tools docs/env ':(glob).github/workflows/env-*.yml'`). If that diff is not empty, or the hand-diff is tedious, build the runner.
+(The workflow files first exist in Milestone 3, and this command is untested until a tag exists.)
 
 ## 2. A canary and an agent rehearsal for the `@docs/env/WORKING-AGREEMENT.md` import
 

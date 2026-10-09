@@ -10,6 +10,8 @@ The meanings are in [ATTEMPTS.md](ATTEMPTS.md), section 7. Entry heading format:
 
 ## env-v1 - not yet tagged
 
+This heading becomes `## env-v1 - YYYY-MM-DD` in the commit that is tagged (Milestone 3).
+
 - class: pin, build, contract, docs
 - merge: required
 
