@@ -5,9 +5,10 @@
 - **Decider:** lodmaome. Drafted with AI assistance (Claude).
 - **Evidence in this repository:** [PHASE1-REPORT.md](../PHASE1-REPORT.md) (the pair), [MILESTONE1-REPORT.md](../MILESTONE1-REPORT.md) (what was built and measured first)
   and [MILESTONE1-FOLLOWUP.md](../MILESTONE1-FOLLOWUP.md) (the review rulings and what they changed).
-- **External evidence:** the raw logs, harness scripts, dumps and screenshots behind these numbers are kept in local folders **outside the repository**
-  (Phase 1 evidence, Milestone 1 evidence) and are cited below by name only. They are not repo paths and a reader of this repository cannot open them;
+- **External evidence:** the raw logs, harness scripts, dumps and screenshots behind these numbers are **outside the repository**, in `C:\git\conduit-env-evidence\`
+  (`phase1-evidence\` for Phase 1, `m1-evidence\` for Milestone 1 and its follow-up and close-out) and are cited below by name only. They are not repo paths and a reader of this repository cannot open them;
   every claim that matters is stated here with its numbers so it can be re-measured with the commands in `docs/env/reset-and-boot.md` and `tools/`.
+  Their harness scripts take that location as an explicit, asserted root (they used to assume the evidence sat inside the repository).
 
 ## 1. The pair
 
@@ -81,6 +82,7 @@ build-tools-lock-sha256: <64 hex>
   so a version string pinned today stops resolving at the next security update, and the build fails instead of drifting.
 - What was installed is recorded in every build log as `apt-installed:` lines: `gcc 4:12.2.0-3`, `gcc-12 12.2.0-14+deb12u1`, `libc6-dev 2.36-9+deb12u14`, `libpq-dev 15.19-0+deb12u1`, `libpq5 15.19-0+deb12u1`, and for the fetch stage `git 1:2.39.5-0+deb12u3`.
   `libpq5` is the one that matters at runtime (it is the client library `psycopg2` links against). `git` is in a throwaway build stage and ships in no image.
+- **The fetch stage's `git` adds 17 more unpinned packages** (`apt-get install --no-install-recommends git` reports "17 newly installed"; the build log prints `apt-installed: git 1:2.39.5-0+deb12u3` through the same `dpkg-query` line as the others, confirmed in the `--no-cache` build log). That brings the unpinned apt surface to 76 packages in the image stage plus 17 in the throwaway fetch stage. Decision (lodmaome): keep apt `git` rather than a digest-pinned git image.
 
 Not tried: `snapshot.debian.org` (would pin the whole apt state but adds a flaky third-party dependency) and `--no-install-recommends` for the compile step (31 packages instead of 76; the compile was not tested, and it would differ from the image that scored 154/154).
 
@@ -138,18 +140,41 @@ Every service that has a `build:` now has `pull_policy: build`, so each `up` run
 
 The cost is a cached build pass inside every `up` (section 6). Not tested: `up` with no network at all (whether BuildKit contacts GitHub even when every step is cached).
 
-**How an attempt can extend the stack (review item 13), tested against this layout** (Compose 5.5.1, Windows; an `attempt/` directory with a relative build context and a bind mount, run against the live stack):
+**Where an attempt extends the stack (decision, lodmaome, 2026-10-09): `compose.override.yaml` at the repository root, beside `compose.yaml`.**
+The environment never ships that file (it is attempt territory, so it is not on `env/OWNED.txt`). The environment's own CI will run `docker compose -f compose.yaml ...`, which disables Compose's auto-load, so a clone's override can never change what the environment's own verification proves.
+The earlier default, `attempt/compose.yaml`, is dropped, and with it the `attempt/.gitkeep` seed (`env/SEED.txt` keeps `docs/attempt/.gitkeep`). The decision was gated on a test; the gate passed on its third run (the first two runs failed for reasons in the test, below).
 
-| Variant | Result |
+Gate, run against the included stack on 2026-10-09 with a temporary `compose.override.yaml` and a temporary `attempt-probe/` directory in the repo root, both deleted afterwards (Compose 5.5.1, Windows). All paths in the override are written relative to the repo root:
+
+| Check | Result |
 |---|---|
-| A. `-f compose.yaml -f attempt/compose.yaml`, paths written relative to the **repo root** (`./attempt/runner`, `./attempt/data`) | works: context and bind source resolve under `attempt/`; the runner image builds, reads the bind-mounted file and gets `GET /api/tags` 200; an override on `api` merges and the pins still interpolate |
+| (a) plain `docker compose up -d --wait` auto-loads it | **yes**: exit 0; the running `api` container has the added environment variable; the added bind mount is visible inside it; the new `runner` service built from `./attempt-probe/runner`, ran, read the bind-mounted file and got `GET /api/tags` 200 |
+| (b) `docker compose -f compose.yaml ...` | **does not load it**: `config` shows the 4 shipped services and no added variable; a real `up` recreated `api` without the variable (and warns about the `runner` container as an orphan) |
+| (c) `COMPOSE_FILE` set in the environment | **does not auto-load it**: neither `config` nor a real `up` applied the override (tested with `COMPOSE_FILE=compose.yaml`) |
+| (d) it can change an included service, add a service with a relative build context, add a bind mount | **yes to all three**, and the pins from `env/pins.env` were still interpolated in the merged result; the build context and the bind source resolved to absolute paths under the repo root |
+| (e) `docker compose config` shows the merged result | **yes**: 5 services (`api`, `db`, `frontend`, `migrate`, `runner`) with the variable, the mount and the build context; `docker compose ls` shows `compose.yaml,compose.override.yaml` as the project's config files |
+
+Known behaviour, to go into `ATTEMPTS.md` (Milestone 2) and the runbook:
+- **The auto-load is invisible.** `up` prints nothing about the override; only `docker compose config` and `docker compose ls` show that it is in effect.
+- **`-f` or `COMPOSE_FILE` bypasses it.** Anyone who sets either gets the bare environment, and an attempt's services become orphans (a warning, not an error).
+- **Every `docker compose` call without `-f` picks it up**, including the environment's own `tools/reset.sh` and `tools/dump-state.sh` and every command in `docs/env/reset-and-boot.md`. In a clone that is intended (the reset resets the attempt's whole stack, and a broken override will make the reset fail), but the environment's verification must use `-f compose.yaml`.
+- **A one-shot service in the override makes `up --wait` exit non-zero** (`container ... exited (0)`) unless another service depends on it with `service_completed_successfully`. Attempts should add long-running services, or keep one-shot runners out of `up`.
+- **An attempt's built services need `pull_policy: build`** (as the environment's do): the stale-image behaviour above applies to them too, and the gate hit it (run 2 reused an image from run 1).
+
+Not tested: other override file names (`compose.override.yml`), running `docker compose` from a subdirectory of the repo (Compose may search parent directories), an explicit `-f compose.yaml -f compose.override.yaml`, Linux and Actions.
+
+Earlier tests of other extension styles, kept for the record (review item 13; an `attempt/` directory with a relative build context and a bind mount). They show paths resolve against the repo root, not the override file's own directory, whichever way an extra file is named:
+
+| Variant (the extra file lived in `attempt/`) | Result |
+|---|---|
+| A. `-f compose.yaml -f attempt/compose.yaml`, paths written relative to the **repo root** | works: context and bind source resolve under `attempt/`; an override on `api` merges and the pins still interpolate |
 | B. `COMPOSE_FILE=compose.yaml:attempt/compose.yaml` with `COMPOSE_PATH_SEPARATOR=:` | works, same result |
 | B2. `COMPOSE_FILE=compose.yaml;attempt/compose.yaml` (the Windows default separator) | resolves to the same build context |
-| C. the same override with paths written relative to `attempt/` (`./runner`, `./data`) | **pitfall**: paths resolve against the repo root (the project directory is the first file's), so the build fails with `unable to prepare context: path ".../runner" not found` |
+| C. the same file with paths written relative to `attempt/` (`./runner`, `./data`) | **pitfall**: paths resolve against the repo root (the project directory is the first file's), so the build fails with `unable to prepare context: path ".../runner" not found` |
 | D. an attempt-owned file in `attempt/` that `include`s `../compose.yaml` | **fails** from the repo root (`GetFileAttributesEx ..\env\pins.env`): the nested `env_file` is resolved against the working directory, not the including file; works when run from inside `attempt/` |
 | D3. an attempt-owned file **at the repo root** that `include`s `compose.yaml` | works, paths relative to that file |
 
-Rules for `ATTEMPTS.md`: extend with an override file (A or B) and write its paths relative to the repo root, or use a root-level file that includes `compose.yaml` (D3); do not include `compose.yaml` from a subdirectory file (D).
+Rules for `ATTEMPTS.md` that follow: write an attempt's extension as `compose.override.yaml` at the repo root, with every path relative to the repo root; do not `include` `compose.yaml` from a file in a subdirectory (D).
 
 - **Safety statement.** The upstream defaults are insecure: PostgreSQL password `0000`, `ALLOWED_HOSTS=*`, Django `runserver`, wildcard CORS. That is acceptable only because every port is bound to `127.0.0.1`.
   Local and CI use only; not a production reference.
@@ -165,7 +190,13 @@ Rules for `ATTEMPTS.md`: extend with an override file (A or B) and write its pat
 
 **From Milestone 1 and its review**
 - The same habit caught the assistant's own errors again: a one-hash mutation that proved nothing; a timing run whose first boot silently pulled an image; a regeneration check that only replayed the cache; a gate whose shell globbing made an ownership check pass or fail for the wrong reason; a log analysis that was blind because the log was UTF-16. Every check with an "absence" claim now has a presence control next to it.
-- **A cleanup script deleted images that were not the environment's.** Its repository-root path was wrong, so its "not in the snapshot" list was empty and it removed everything. The rule since: cleanup removes only an **allow-list of names this work owns**, asserts its paths and its snapshot before any destructive step, prints what it will remove first, and is dry-run before its first real run.
+- **Second Docker incident: a cleanup step deleted images that were not the environment's.** The cause was a deny-list cleanup ("remove everything not in the snapshot") run with an unchecked, empty snapshot: the script's repository-root path was wrong, the snapshot file was not found without any error, and `docker rmi -f` removed five of the owner's own images. A deny-list fails open: any bug in building the list turns it into "remove everything". (The first Docker incident was Phase 1's: the engine stopped unexplained and the harness tried to start Docker Desktop from a path that did not exist.)
+  **Hard rule since (lodmaome):** no `rm`, `rmi`, `prune` or `-f` against Docker, except through **one reviewed script** that selects only resources carrying our label or the `conduit-env/` prefix, prints the list, and waits for explicit approval before removing anything. **No such script exists yet; until one is reviewed, nothing is removed.**
+  A cold-build measurement needs no image removal: use `--no-cache`. If a permission rule refuses a Docker command, stop and say so; never work around it. Never start or stop Docker Desktop.
+  The one removal that remains is the documented reset, `tools/reset.sh` (`docker compose down -v --remove-orphans`), which Compose scopes to this environment's own project (its containers, network and database volume); it runs only on request. Whether it falls under the hard rule is an open question for review (section 7).
+  Harness scripts that removed images are disabled; the others take explicit, asserted roots. Scripts and tools that build use `--output type=cacheonly` where an image is not needed, so they do not leave untagged images that this rule would forbid removing.
+- **Commit hygiene.** `git commit` takes everything already staged, including an earlier `git mv`. Commit `f368757` ("track PHASE1-REPORT.md, content unchanged") therefore also contains the two lock-file renames, and the message of `91731ad` describes renames that landed in `f368757`. Decision (lodmaome): **not rewritten now.** The author identity is decided (keep `leandro.donato@ymail.com`), so the only remaining reason is the misleading message, which is cosmetic. Any rewrite is optional, only just before the Milestone 3 push, after `git branch backup/pre-rewrite`, and only with explicit go-ahead.
+  Since then: run `git status --short` before every commit and stage explicit paths.
 
 ## 6. Measurements
 
@@ -197,17 +228,20 @@ Control: the same runner and scorer pointed at an unreachable port exit 3 with 0
 The initial state is 17 tables, 29 applied migrations, and only framework rows (`auth_permission` 40, `django_content_type` 10, `django_migrations` 29); no application rows.
 Controls: two raw `pg_dump`s of one unchanged state carry different `\restrict` nonces, so stripping them is necessary; registering one user makes the diff non-empty and a reset restores equality.
 The schema, row counts and migration list also equal Phase 1's R6 dumps for the same backend SHA and PostgreSQL digest (the schema after dropping comments, blank lines and `OWNER TO` statements).
-This was measured before the follow-up changes; the migrate command and the backend fetch changed afterwards, and the Hurl run above ran on a fresh database from the final stack. The dumps were not repeated after those changes.
+That first measurement predates the follow-up changes (migrate command, backend fetch). **Repeated at the Milestone 1 close-out on the final stack:** two more cycles of `tools/reset.sh` and `tools/dump-state.sh` with the nonce lines stripped (0 left) are identical to each other and byte-identical to the original Milestone 1 initial state (`diff -r` exit 0, same file sizes). The registered-user mutation control was not repeated (the tool is unchanged, and the control was run when it was written).
 
 ## 7. Open items and known limitations
 
 Accepted in review: the `include` plus `env_file` layout, and apt drift as a known limitation.
 
-1. **`env/SEED.txt` lists four files that do not exist yet** (`README.md`, `LICENSE`, two `.gitkeep`). Milestone 2 and the tag step create them.
-2. **Not re-run:** a real-browser flow against the compose-built pair (the raw-CDP check is Milestone 2), and the reset-cycle dumps after the follow-up changes.
+1. **`env/SEED.txt` lists three files that do not exist yet** (`README.md`, `LICENSE`, `docs/attempt/.gitkeep`; `attempt/.gitkeep` was dropped with the `compose.override.yaml` decision). Milestone 2 and the tag step create them. The release check that `attempt/` and `docs/attempt/` hold only `.gitkeep` becomes a check on `docs/attempt/` only, plus a check that no `compose.override.y*ml` is tracked by the environment.
+2. **Not re-run:** a real-browser flow against the compose-built pair (the raw-CDP check is Milestone 2). The reset-cycle dumps were repeated at the close-out (section 6).
 3. **`up` without network** was not tested (see section 4, `pull_policy: build`).
 4. **Nested include from a subdirectory** fails (section 4, variant D); documented, not fixed.
 5. **Three submodule repositories are no longer fetched by the backend build**, but the frontend still depends on `realworld-apps/realworld` at `dd53ae6ef11e492a74feabc8043133e9f5283967` existing at build time.
 6. **apt packages float** (including `git` in the fetch stage); PyPI, GitHub, Docker Hub and the Debian mirror must be reachable at build time.
 7. **One unattributed second** in the boot time against Phase 1 (section 6).
 8. Nothing has run on `ubuntu-24.04` or on GitHub Actions; Chrome is the only browser measured in Phase 1.
+9. **`tools/reset.sh` is a removal** (`docker compose down -v --remove-orphans`, scoped by Compose to this environment's project). It was run on request at the close-out. Whether the hard rule in section 5 covers it, or whether it needs to go through the reviewed script, is for review; until then it is only run when asked.
+10. **The reviewed removal script does not exist.** Until one is written and approved, resources this work created and left (images tagged `conduit-env/...`, the `postgres` image pulled by digest, build cache) stay in place.
+11. **Milestone 2 consequences of the override decision:** the environment's verification and gate call `docker compose -f compose.yaml`; `ATTEMPTS.md` documents section 4's known behaviour (invisible auto-load, `-f` and `COMPOSE_FILE` bypass, one-shot services, `pull_policy: build`).
