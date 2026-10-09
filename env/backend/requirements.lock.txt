@@ -2,8 +2,8 @@
 # Backend: https://github.com/c4ffein/realworld-django-ninja @ 04ef47ced437ee8795a13bdcbc2eff2be19e33bd
 # Source: [project].dependencies of its pyproject.toml (extra 'dev' not included), resolved under lock-seed.txt.
 # Generated with: Python 3.12.15, pip 25.0.1, pip-compile, version 7.6.2
-# Install with -r (not -c): pip enforces --require-hashes only for requirements it is given directly.
-#   pip install --require-hashes --no-build-isolation -r constraints.txt   (after build-tools.txt; see Dockerfile)
+# This is a requirements lock, installed with -r: pip enforces --require-hashes only for requirements it is given directly (not through -c).
+#   pip install --require-hashes --no-build-isolation -r requirements.lock.txt   (after build-tools.lock.txt; see Dockerfile)
 annotated-types==0.6.0 \
     --hash=sha256:0641064de18ba7a25dee8f96403ebc39113d0cb953a01429249d5c7564666a43 \
     --hash=sha256:563339e807e53ffd9c267e99fc6d9ea23eb8443c08f112651963e24e22f84a5d

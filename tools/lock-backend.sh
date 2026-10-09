@@ -1,5 +1,5 @@
 #!/bin/sh
-# Regenerates the hash-pinned files in env/backend/ (constraints.txt, build-tools.txt) in a Linux container
+# Regenerates the hash-pinned lock files in env/backend/ (requirements.lock.txt, build-tools.lock.txt) in a Linux container
 # on the digest-pinned Python base. Needs a running Docker engine; changes only the two output files.
 #
 # Run it only when a pin changes (a pin bump is an env change: new tag, CHANGELOG entry, re-run of the Hurl suite).
@@ -7,7 +7,7 @@
 # versions. To move versions on purpose, edit lock-seed.txt (or delete the lines to move) and review the diff.
 set -eu
 
-PIP_TOOLS_VERSION=7.6.2   # generator only; recorded in the header of constraints.txt, not part of the runtime image
+PIP_TOOLS_VERSION=7.6.2   # generator only; recorded in the header of requirements.lock.txt, not part of the runtime image
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
@@ -30,7 +30,7 @@ docker buildx build ${LOCK_BUILD_FLAGS:-} \
   --output "type=local,dest=$tmp" \
   env/backend
 
-cp "$tmp/constraints.txt" env/backend/constraints.txt
-cp "$tmp/build-tools.txt" env/backend/build-tools.txt
-echo "wrote env/backend/constraints.txt and env/backend/build-tools.txt"
-sha256sum env/backend/constraints.txt env/backend/build-tools.txt
+cp "$tmp/requirements.lock.txt" env/backend/requirements.lock.txt
+cp "$tmp/build-tools.lock.txt" env/backend/build-tools.lock.txt
+echo "wrote env/backend/requirements.lock.txt and env/backend/build-tools.lock.txt"
+sh tools/lock-hashes.sh
