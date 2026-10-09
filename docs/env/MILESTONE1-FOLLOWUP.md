@@ -4,7 +4,7 @@
 Raw evidence (logs, harness scripts, dumps, scans) is **outside the repository**, in `C:\git\conduit-env-evidence\` (`phase1-evidence\` and `m1-evidence\`); it is cited below by name only, as external evidence. The [ADR](adr/0001-pair-lock-and-migrations.md) carries the numbers and decisions.
 
 > **Close-out update (Milestone 1 closed, after the owner's answers).** The status above and sections 1, 5 and 6 are as delivered and are partly superseded:
-> the owner restored the five Docker images and told me not to touch them or anything else of theirs (incident closed on their side; the cause and the rules stay recorded in the ADR);
+> the owner told me not to touch the five Docker images or anything else of theirs (the cause and the rules stay recorded in the ADR);
 > commit `f368757` is **not** rewritten now (the ADR, section 5, records the decision and the conditions for any later rewrite);
 > an attempt extends the stack with `compose.override.yaml` at the **repo root**, not `attempt/compose.yaml` (the gate and the decision are in the ADR, section 4; ruling 13 below describes the earlier `attempt/` tests, which stay as a record);
 > the fetch stage keeps apt `git`; and the hard rule on Docker removals is in the ADR, section 5.

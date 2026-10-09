@@ -7,7 +7,7 @@ lodmaome, the owner, a QA engineer, decided what to build, set the rules it was 
 Nothing was pushed, tagged or published without the owner's go-ahead for that action.
 
 **What is the owner's own writing.** Rules (a), (b) and (c) of section 2 of the [working agreement](WORKING-AGREEMENT.md) are written by the owner, in the owner's words, and are quoted there unedited.
-Everything else in the working agreement, section 2(d) (the flake policy values) aside, was drafted by the assistant and is reviewed by the owner before the first release.
+Everything else in the working agreement, section 2(d) (the flake policy values) aside, was drafted by the assistant and is reviewed by the owner before the first release. Each rule of its section 1 carries a scope tag (everyone, environment repository only, attempts only) because attempts import the whole file.
 
 ## The path
 
@@ -21,7 +21,7 @@ Everything else in the working agreement, section 2(d) (the flake policy values)
 *Lesson:* the environment and its tools never start or stop Docker Desktop. A tool that needs the engine says so and stops; the runbook says what to do when the engine is down.
 
 **2. Five of the owner's Docker images were deleted (Milestone 1 follow-up).** A timing script ended with `docker rmi -f` on every image "not in the snapshot taken before the run". It resolved the repository root one directory too high, the snapshot file was not found without any error,
-the snapshot list was empty, and the script removed every image it could, including five that belonged to the owner's other projects. Images used by running containers could not be removed, which is why this environment's own images survived. The owner restored the five images themselves.
+the snapshot list was empty, and the script removed every image it could, including five that belonged to the owner's other projects. Images used by running containers could not be removed, which is why this environment's own images survived.
 *Lessons:* a deny-list fails open (any bug in building the list turns "remove what is not listed" into "remove everything"); a script whose root path is wrong must refuse, not assume; and measuring a cold build needs no image removal (use `--no-cache`).
 *The rule since:* no `rm`, `rmi`, `prune` or `-f` against Docker, except two named exemptions ([WORKING-AGREEMENT.md](WORKING-AGREEMENT.md) section 1, rule 9); destructive scripts are tested first against a fake `docker` that only logs its arguments, with a mutation that proves the test would notice a missing guard.
 A related measurement from Milestone 2: `COMPOSE_PROJECT_NAME=docker` makes Compose resolve the project name to the owner's other project, which `tools/reset.sh` would then have reset; the project guard refuses that ([ADR 0002](adr/0002-milestone2-decisions.md) section 1).
@@ -34,8 +34,8 @@ History is not rewritten (the owner's decision). The messages stay as they are; 
 |---|---|---|---|
 | `f368757` | "track PHASE1-REPORT.md under docs/env (content unchanged)" | the report (451 added lines) **and two renames**: `build-tools.txt` to `build-tools.lock.txt` and `constraints.txt` to `requirements.lock.txt` | an earlier `git mv` was already staged and `git commit` takes everything staged |
 | `91731ad` | "backend: rename the lock files, fetch without submodules, add lock-hash tools" | the fetch change, the lock-hash tools and a small content edit to `requirements.lock.txt`; **the renames themselves are in `f368757`** | same cause as above |
-| `93f58d0` | "stack: migrate only, pull_policy build, bun 1.4.2 tag" | the stack and pin changes it names, **and** an edit to `docs/env/reset-and-boot.md`, which the message does not name | the commit message does not name every file group (the owner listed this commit as inexact; this is the mismatch I can see, the owner's reason is not recorded here) |
-| `df05072` | "docs: say where the external evidence lives; close-out note in the follow-up" | three report edits and a comment-only change to `env/backend/lock-seed.txt`; the title names only documents | the title does not mention the `lock-seed.txt` change (the body does); the owner's reason for listing this commit is not recorded here |
+| `93f58d0` | "stack: migrate only, pull_policy build, bun 1.4.2 tag" | the stack and pin changes it names, **and** an edit to `docs/env/reset-and-boot.md`, which the message does not name | the commit message does not name every file group; found by the Milestone 1 close-out commit audit |
+| `df05072` | "docs: say where the external evidence lives; close-out note in the follow-up" | three report edits and a comment-only change to `env/backend/lock-seed.txt`; the title names only documents | found in review of the close-out: its title names only documents, but it also changes `env/backend/lock-seed.txt` (the body does mention it) |
 
 From the next commit on, messages name every file group (see [WORKING-AGREEMENT.md](WORKING-AGREEMENT.md) section 1, rule 6) and the Milestone 2 report carries a table of each commit's hash, message and files.
 
