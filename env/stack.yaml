@@ -79,10 +79,12 @@ services:
     build:
       context: env/frontend
       args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:?}
         BUN_IMAGE: ${BUN_IMAGE:?}
         NGINX_IMAGE: ${NGINX_IMAGE:?}
         FRONTEND_REPO: ${FRONTEND_REPO:?}
         FRONTEND_SHA: ${FRONTEND_SHA:?}
+        FRONTEND_REALWORLD_SHA: ${FRONTEND_REALWORLD_SHA:?}
         # The repo's own build-time hook (src/config.js); no patch, no proxy: the browser talks to the API cross-origin.
         VITE_API_URL: http://localhost:4181/api
     pull_policy: build

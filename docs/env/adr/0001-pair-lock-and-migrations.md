@@ -126,7 +126,7 @@ Putting the check in the one-shot cost about 1.0 s per boot (measured three time
   The cost is `git` from apt in a throwaway build stage (17 packages, not shipped, unpinned like the other apt packages). Measured: the result equals the `ADD` result in file content and in modes and owners for all 76 paths outside the three submodule directories, which are empty (0 entries against 10, 20 and 14);
   the tree is 372 KB against 6,044 KB, and the backend image went from 671 MB to 662 MB.
   The backend build no longer depends on two personal third-party repositories that the app never reads.
-- The frontend keeps `ADD <git>#<sha>`, which fetches exactly its one required submodule at the commit above. `docs/env/THIRD-PARTY.md` (Milestone 2) needs a row for that spec checkout.
+- (Superseded by ADR 0002 section 2: the frontend now fetches through a `src` stage that asserts the submodule commit against `FRONTEND_REALWORLD_SHA`.) The frontend kept `ADD <git>#<sha>`, which fetches exactly its one required submodule at the commit above. `docs/env/THIRD-PARTY.md` (Milestone 2) needs a row for that spec checkout.
 
 **Stale images and `pull_policy: build` (review item 10).** Images are tagged with the pinned SHA only, so with Compose's default `missing` policy a changed build arg, Dockerfile or lock file under an unchanged SHA silently reuses the old image.
 Every service that has a `build:` now has `pull_policy: build`, so each `up` runs the (cached) build. Proof by build-arg mutation on the frontend, `VITE_API_URL` changed to `http://localhost:4999/api` by an override file:
