@@ -1,5 +1,7 @@
 # conduit-env: Milestone 2 report
 
+Follow-up fixes after the review (snapshot as valid JSON, scoped working agreement, corrections, the non-hermetic page): see [MILESTONE2-FOLLOWUP.md](MILESTONE2-FOLLOWUP.md).
+
 **Status: Milestone 2 is done locally and awaits your review.** HEAD is the commit that adds this report; before it there are 19 commits since `7d87171` (33 on `main` in all, 14 from before Milestone 2). Nothing was pushed, tagged, or created on GitHub, nothing under `.github/` exists, and no third-party repository was touched.
 Raw evidence is **outside the repository**, in `C:\git\conduit-env-evidence\m2-evidence\` (cited below by sub-folder and file name only; you can open them, a reader of this repository cannot). Each claim below is marked **seen** (with where) or **not seen**. The decisions and measurements are in [ADR 0002](adr/0002-milestone2-decisions.md) (sections 1 to 8) and [ADR 0003](adr/0003-env-v2-deferrals.md).
 
