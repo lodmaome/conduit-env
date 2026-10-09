@@ -8,9 +8,10 @@
 //   api-flow    register a unique user, log in, read the current user, create an article, read it back and compare
 //   frontend    GET / -> 200 and it is the app page
 //   migrations  `makemigrations --check --dry-run` through `docker compose exec` in the running api container
+//   browser     tools/browser-check.mjs in a real Chrome (CHROME_BIN); `--no-browser` leaves it out and says so
 //
 // All HTTP checks use 127.0.0.1 explicitly, never `localhost`. Credentials are generated per run, never printed and never written to
-// disk (this tool writes no file at all). What a run leaves in the database: docs/env/README.md (measured in ADR 0002).
+// disk (this tool writes no file; the browser check keeps its Chrome profile in a temp directory it deletes). What a run leaves in the database: docs/env/README.md (measured in ADR 0002).
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import net from 'node:net';
@@ -27,7 +28,7 @@ if (!existsSync(resolve(root, 'compose.yaml')) || !existsSync(resolve(root, 'env
 }
 
 const args = process.argv.slice(2);
-const known = new Set(['--fresh', '--help']);
+const known = new Set(['--fresh', '--no-browser', '--help']);
 const unknown = args.filter((a) => !known.has(a));
 if (args.includes('--help') || unknown.length) {
   console.log(unknown.length ? `unknown argument(s): ${unknown.join(' ')}\n` : '');
@@ -35,6 +36,7 @@ if (args.includes('--help') || unknown.length) {
   process.exit(unknown.length ? EXIT_COULD_NOT_RUN : 0);
 }
 const fresh = args.includes('--fresh');
+const noBrowser = args.includes('--no-browser');
 
 function run(cmd, cmdArgs, { timeoutMs = 120_000, env = process.env, inherit = false } = {}) {
   return new Promise((resolvePromise, reject) => {
@@ -73,7 +75,8 @@ async function preflight() {
   for (const p of PORTS) ports[p] = await portState(p);
   let shAvailable = false;
   if (fresh) { try { shAvailable = (await run('sh', ['-c', 'exit 0'])).code === 0; } catch { shAvailable = false; } }
-  return evaluatePreflight({ nodeVersion: process.versions.node, engine, compose, ports, fresh, shAvailable });
+  const chromeBin = process.env.CHROME_BIN;
+  return evaluatePreflight({ nodeVersion: process.versions.node, engine, compose, ports, fresh, shAvailable, browser: { skip: noBrowser, chromeBin, exists: Boolean(chromeBin) && existsSync(chromeBin) } });
 }
 
 if (fresh) {
@@ -81,7 +84,7 @@ if (fresh) {
   console.log('orphans (an attempt\'s extra services included). Every other Docker object is left alone. Reset: sh tools/reset.sh with COMPOSE_FILE=compose.yaml.');
 }
 
-let pre = await preflight();
+const pre = await preflight();
 for (const p of pre) console.log(`${{ ok: 'ok   ', info: 'note ', error: 'ERROR' }[p.level]} preflight: ${p.text}`);
 if (pre.some((p) => p.level === 'error')) {
   console.log('verify could not run: fix the errors above.');
@@ -97,6 +100,17 @@ if (fresh) {
   }
 }
 
+// The browser check runs as its own process (tools/browser-check.mjs): it creates one more user and article, launches its own headless Chrome and cleans up after itself.
+async function checkBrowser() {
+  const name = 'browser';
+  if (noBrowser) return { name, ok: true, skipped: true, text: 'skipped: --no-browser was given' };
+  const r = await run(process.execPath, ['tools/browser-check.mjs'], { timeoutMs: 180_000 });
+  const lines = r.stdout.split(/\r?\n/);
+  if (r.code === 0) return { name, ok: true, text: `${lines.filter((l) => l.startsWith('PASS')).length} assertions pass in a real Chrome (tools/browser-check.mjs)` };
+  const why = r.code === EXIT_COULD_NOT_RUN ? lines.filter((l) => l.startsWith('could not run')).join(' ') : lines.filter((l) => l.startsWith('FAIL')).map((l) => l.replace(/^FAIL\s+/, '')).join('; ');
+  return { name, ok: false, text: why || `tools/browser-check.mjs exited ${r.code}: ${(r.stderr || r.stdout).trim().slice(0, 200)}` };
+}
+
 const base = { apiBase: 'http://127.0.0.1:4181/api', frontendBase: 'http://127.0.0.1:4180', fetchFn: fetch, runDocker };
 const data = makeRunData(randomBytes);
 const secrets = [];
@@ -105,6 +119,7 @@ const results = [
   await checkApiFlow(base, data, secrets),
   await checkFrontend(base),
   await checkMigrations(base),
+  await checkBrowser(),
 ];
 const { lines, failed } = summarize(results, secrets);
 for (const l of lines) console.log(l);

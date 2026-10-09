@@ -23,7 +23,7 @@ export function compareVersions(a, b) {
 }
 
 // Returns a list of { level: 'error' | 'info' | 'ok', text }. Any 'error' means the checks must not run.
-export function evaluatePreflight({ nodeVersion, engine, compose, ports, fresh, shAvailable }) {
+export function evaluatePreflight({ nodeVersion, engine, compose, ports, fresh, shAvailable, browser = { skip: true } }) {
   const out = [];
   const nodeMajor = Number(String(nodeVersion).split('.')[0]);
   out.push(nodeMajor >= MIN_NODE_MAJOR
@@ -55,6 +55,10 @@ export function evaluatePreflight({ nodeVersion, engine, compose, ports, fresh, 
   if (fresh && !shAvailable) {
     out.push({ level: 'error', text: '--fresh runs `sh tools/reset.sh`, but `sh` is not on the PATH. On Windows run this from Git Bash or WSL.' });
   }
+  if (browser.skip) out.push({ level: 'info', text: 'browser check skipped on request (--no-browser)' });
+  else if (!browser.chromeBin) out.push({ level: 'error', text: 'CHROME_BIN is not set. Point it at a Chrome or Chromium executable, or pass --no-browser to leave the browser check out (it is never skipped silently).' });
+  else if (!browser.exists) out.push({ level: 'error', text: `CHROME_BIN=${browser.chromeBin} does not exist. Fix the path or pass --no-browser.` });
+  else out.push({ level: 'ok', text: `CHROME_BIN=${browser.chromeBin}` });
   return out;
 }
 
@@ -113,7 +117,7 @@ export function evaluateMigrations({ code, stdout, stderr }) {
 
 // results: [{ name, ok, text }] -> { lines, failed }. No timestamps, no durations: the verdict lines are deterministic.
 export function summarize(results, secrets = []) {
-  const lines = results.map((r) => redact(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}: ${r.text}`, secrets));
+  const lines = results.map((r) => redact(`${r.skipped ? 'SKIP' : r.ok ? 'PASS' : 'FAIL'}  ${r.name}: ${r.text}`, secrets));
   const failed = results.filter((r) => !r.ok).length;
   lines.push(`failed checks: ${failed}`);
   return { lines, failed };

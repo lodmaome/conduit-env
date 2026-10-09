@@ -97,3 +97,26 @@ which the verify evaluator reports as FAIL. Unchanged before and after: `git sta
 (an extra `docker diff` line, or a changed container line, makes the snapshots unequal). Not verified: that `docker diff` reports a write the way I expect (the control would have meant writing into the running container, which I did not do).
 
 **Not verified.** A failing run of the real script against a really broken stack (stack down, a stopped engine): those paths are covered by fixtures and unit tests only. A Compose version other than 5.5.1.
+
+## 4. The raw-CDP browser check (`tools/browser-check.mjs`)
+
+**Correction to the brief (lodmaome):** the expected API origin is not `http://127.0.0.1:4181`. The frontend is built with `VITE_API_URL=http://localhost:4181/api` (`env/stack.yaml`), so the origin baked into the build is `http://localhost:4181`.
+
+**Pre-registered CORS probe** (`m2-evidence\PREREGISTRATION.md`, "Task 2"; output `m2-evidence\t2\cors-probe.txt`, seen). `GET /api/tags` and a preflight `OPTIONS /api/articles` with `Origin` set to `http://localhost:4180`, `http://127.0.0.1:4180` and a control `http://evil.example`:
+all three get `access-control-allow-origin: *`; the preflight allows `accept, authorization, content-type, user-agent, x-csrftoken, x-requested-with` and `DELETE, GET, OPTIONS, PATCH, POST, PUT`. So the API accepts any origin (the wildcard was in the ADR; now measured), and the frontend works from either host name.
+**Decision:** the docs tell users to open **`http://localhost:4180`**, because that is the name the build was made for (its API calls go to `localhost:4181` either way), and the check loads exactly that URL. Opening `http://127.0.0.1:4180` also works: the check was run against it once (`alt-url-127.txt`, 3 of 3 pass); the page still calls `http://localhost:4181`.
+Informational: this machine resolves `localhost` to `::1, 127.0.0.1` in that order; the stack publishes IPv4 only, and Chrome's API responses came from `127.0.0.1`. No failure or visible difference was seen; no timing was measured.
+
+**What it does.** Creates a user and an article through the API (known title), launches its own headless Chrome (`--headless=new`, `--remote-debugging-port=0`, fresh profile `conduit-env-chrome-*` under `os.tmpdir()` with a marker file holding a per-run token, port read from `DevToolsActivePort`),
+and over a raw CDP websocket (Node's global `WebSocket`) records `Network.requestWillBeSent`. Assertions: every Fetch/XHR goes to `http://localhost:4181`; none goes to the old origin `https://api.realworld.show` (the Vue source's fallback, PHASE1-REPORT K5 scoping); the rendered page contains the known title.
+Non-Fetch/XHR requests to the old origin are printed as informational. Chrome is stopped with `Browser.close`, and only if it is still there, `taskkill /PID <child pid> /T /F` (by PID, never by name); the profile directory is deleted only after re-checking temp dir, prefix and marker.
+Without `CHROME_BIN`, or with a path that does not exist, it exits 90 with a readable message (`chrome-bin-errors.txt`, seen); `verify` fails its preflight the same way unless `--no-browser` is given, and then prints `SKIP browser` (never silent).
+
+**Results (seen, `m2-evidence\t2\`, Chrome 154.0.8037.98).** Control, unmutated: 3 of 3 pass (`browser-control.txt`).
+Mutation 1, expected origin `http://localhost:9999`: fails with `expected API origin http://localhost:9999, observed http://localhost:4181 (2 Fetch/XHR requests)` (`mut1-wrong-origin.txt`).
+Mutation 2, `Network.setBlockedURLs` on the API origin: fails with `2 API request(s) failed (blocked by the DevTools client, reason inspector) and the page did not render the article ...` (`mut2-blocked.txt`). Its first version printed `( (inspector))` for the empty `errorText`; fixed to the readable text above.
+After all runs no `conduit-env-chrome-*` directory and no Chrome process whose command line names one was left (checked both ways). `verify` with the browser: 5 PASS (`verify-with-browser.txt`); one browser check adds 1 user, 1 article, 2 article-tag links, 1 tag, 1 session (`browser-rowcounts.diff`).
+Unit tests (`tools/test/browser.test.mjs`, 33 tests in all, 0 failed) cover the request evaluation, both mutations, a wrong-origin fixture, an old-origin Fetch, informational-only old-origin images, the presence control (no Fetch/XHR at all must not "pass" the old-origin assertion), the profile-deletion guard and the preflight.
+
+**Unmutated assertion, stated plainly:** `no-old-origin` has no clean mutation in the real browser (it would need a frontend built without `VITE_API_URL`, i.e. a change to the stack); it is mutated in the unit fixtures only, and in the real run it is protected by the presence control above.
+**Not verified:** Chrome other than 154, Linux, Actions, headless-shell or Chromium builds; a run with the stack down (the setup step reports `could not run`, not exercised); the check does not click or type (no real user flow; Phase 1's 8-step flow was not repeated).
