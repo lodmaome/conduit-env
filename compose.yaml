@@ -1,0 +1,9 @@
+# Entry point of the environment. The stack itself is env/stack.yaml.
+# This file only feeds env/pins.env into that stack for variable interpolation, so a plain
+# `docker compose up -d --wait` works with no --env-file flag and no root .env (a root .env is attempt territory).
+name: conduit-env
+
+include:
+  - path: env/stack.yaml
+    project_directory: .
+    env_file: env/pins.env

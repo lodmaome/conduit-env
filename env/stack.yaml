@@ -1,0 +1,96 @@
+# The stack: db -> migrate (one-shot) -> api -> frontend.
+# Included by the root compose.yaml, which supplies the pins from env/pins.env.
+# Fixed host ports, all bound to 127.0.0.1 only: frontend 4180, API 4181 (/api), DB 4182.
+# The API origin is baked into the frontend at build time, so changing a port needs a rebuild.
+# Insecure upstream defaults (Postgres password 0000, ALLOWED_HOSTS=*, Django runserver, wildcard CORS) are acceptable
+# only because nothing is reachable beyond this machine. Local and CI use only; not a production reference.
+
+x-backend-build: &backend-build
+  context: env/backend
+  args:
+    PYTHON_IMAGE: ${PYTHON_IMAGE:?set by compose.yaml from env/pins.env}
+    BACKEND_REPO: ${BACKEND_REPO:?}
+    BACKEND_SHA: ${BACKEND_SHA:?}
+
+x-backend-env: &backend-env
+  # Same values as the upstream docker-compose.yml.
+  DATABASE_URL: postgresql://postgres:0000@db:5432/postgres
+  ALLOWED_HOSTS: "*"
+
+services:
+  db:
+    image: ${POSTGRES_IMAGE:?}
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "0000"
+      POSTGRES_DB: postgres
+    ports:
+      - "127.0.0.1:4182:5432"
+    volumes:
+      # PostgreSQL 18 images keep their data under /var/lib/postgresql/18/docker; this path is the one upstream mounts.
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    # One-shot. Runs `migrate` only, never `makemigrations`, then fails the stack if a model has no committed migration.
+    # (Deviation from upstream's compose command `makemigrations && migrate`: docs/env/adr/0001.)
+    build: *backend-build
+    image: conduit-env/backend:${BACKEND_SHA:?}
+    command:
+      - sh
+      - -c
+      - python manage.py migrate && python manage.py makemigrations --check --dry-run
+    environment: *backend-env
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: *backend-build
+    image: conduit-env/backend:${BACKEND_SHA:?}
+    environment: *backend-env
+    ports:
+      - "127.0.0.1:4181:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # No health endpoint exists; GET /api/tags is the cheapest endpoint that touches the database.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/tags', timeout=3).status == 200 else 1)"
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  frontend:
+    build:
+      context: env/frontend
+      args:
+        BUN_IMAGE: ${BUN_IMAGE:?}
+        NGINX_IMAGE: ${NGINX_IMAGE:?}
+        FRONTEND_REPO: ${FRONTEND_REPO:?}
+        FRONTEND_SHA: ${FRONTEND_SHA:?}
+        # The repo's own build-time hook (src/config.js); no patch, no proxy: the browser talks to the API cross-origin.
+        VITE_API_URL: http://localhost:4181/api
+    image: conduit-env/frontend:${FRONTEND_SHA:?}
+    ports:
+      - "127.0.0.1:4180:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  db-data:
