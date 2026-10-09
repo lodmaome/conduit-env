@@ -77,6 +77,22 @@ run "dump-state.sh name=conduit-env" ok "$here/dump-state.sh" "$T/dump-ok"
 [ -s "$T/dump-ok/schema.txt" ] && pass "positive dump-state: wrote schema.txt" || fail "positive dump-state: no schema.txt"
 grep -w exec "$FAKE_LOG" | grep -q -v -- '-p conduit-env' && fail "positive dump-state: an exec call lacks -p conduit-env" || pass "positive dump-state: every exec call has -p conduit-env"
 
+# a relative output directory is resolved against the caller's cwd, not the repo root
+mkdir "$T/cwd"
+: > "$FAKE_LOG"; FAKE_MODE=ok; export FAKE_MODE
+( cd "$T/cwd" && sh "$here/dump-state.sh" rel-out > "$T/out" 2> "$T/err" ) && rc=0 || rc=$?
+[ "$rc" -eq 0 ] && pass "relative output dir: exit 0" || fail "relative output dir: exit $rc (stderr: $(cat "$T/err"))"
+[ -s "$T/cwd/rel-out/schema.txt" ] && pass "relative output dir: written under the caller's cwd (presence control)" || fail "relative output dir: nothing under the caller's cwd"
+[ ! -e "$here/../rel-out" ] && pass "relative output dir: nothing created under the repo root" || fail "relative output dir: created under the repo root"
+
+# mutation: dump-state.sh without the absolute-path line puts the relative directory under its repo root (here a temp tree)
+mkdir -p "$T/mut2/tools"; cp "$here/project-guard.sh" "$T/mut2/tools/"
+grep -v '^case "\$out" in' "$here/dump-state.sh" > "$T/mut2/tools/dump-state.sh"
+cmp -s "$here/dump-state.sh" "$T/mut2/tools/dump-state.sh" && fail "mutation 2 did not change dump-state.sh" || pass "mutation 2 applied: absolute-path line removed"
+[ "$(command -v docker)" = "$T/bin/docker" ] || { echo "ABORT: docker is not the fake before running mutant 2"; exit 99; }
+( cd "$T/cwd" && sh "$T/mut2/tools/dump-state.sh" rel-out2 > "$T/out" 2> "$T/err" ) || true
+if [ -s "$T/mut2/rel-out2/schema.txt" ] && [ ! -e "$T/cwd/rel-out2" ]; then pass "mutant 2: output lands under its repo root, so the relative-dir test detects the missing line"; else fail "mutant 2: relative-dir test could not detect the missing line"; fi
+
 # mutation: reset.sh with the guard call removed, against the fake only, in a temp tree
 cp "$here/reset.sh" "$T/mut/tools/reset.sh"; cp "$here/project-guard.sh" "$T/mut/tools/project-guard.sh"
 before=$(wc -l < "$T/mut/tools/reset.sh")

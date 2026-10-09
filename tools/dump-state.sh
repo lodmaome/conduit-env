@@ -6,6 +6,8 @@
 # data.txt leaves out django_migrations because that table holds the time each migration was applied.
 set -eu
 out="${1:?usage: tools/dump-state.sh <output-dir>}"
+# Make a relative output directory absolute before the cd below, so it means what the caller typed (relative to their cwd), not the repo root.
+case "$out" in /*|[A-Za-z]:*) ;; *) out="$PWD/$out" ;; esac
 here=$(cd "$(dirname "$0")" && pwd)
 . "$here/project-guard.sh"
 cd "$here/.."
