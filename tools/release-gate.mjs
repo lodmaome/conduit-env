@@ -2,6 +2,7 @@
 //
 //   node tools/release-gate.mjs env-vN          all checks, for the candidate tag env-vN (a tag is NOT created)
 //   node tools/release-gate.mjs                 the tag-independent checks; the tag checks print SKIP, never a silent pass
+//   node tools/release-gate.mjs env-vN --local  also look for this machine's Windows user name and C:/Users paths in history (derived at run time)
 //   node tools/release-gate.mjs --self-test     every check against its failing fixture (must fail) and a golden control (must pass)
 //
 // Exit status = number of failed checks (or failed self-test assertions); 90 = bad usage. Verdict lines carry no timestamps.
@@ -10,13 +11,14 @@
 // lychee fixture run Docker through tools/gate.sh, the only `docker run --rm` in the repository.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, userInfo } from 'node:os';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
 import { CHECKS } from './lib/release-checks.mjs';
 import { GOLDEN_PORTS, goldenTree } from './lib/golden-tree.mjs';
 import { gitOps, realCtx, treeCtx } from './lib/release-ctx.mjs';
+import { formatFindings, gitHistory, scanHistory } from './lib/history-scan.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 if (!existsSync(join(root, 'compose.yaml')) || !existsSync(join(root, 'env/OWNED.txt'))) {
@@ -24,8 +26,9 @@ if (!existsSync(join(root, 'compose.yaml')) || !existsSync(join(root, 'env/OWNED
 }
 const args = process.argv.slice(2);
 const selfTest = args.includes('--self-test');
+const localMode = args.includes('--local');
 const tag = args.find((a) => !a.startsWith('--')) ?? null;
-if (args.some((a) => a.startsWith('--') && a !== '--self-test') || (tag && !/^env-v[1-9][0-9]*$/.test(tag)) || (selfTest && tag)) {
+if (args.some((a) => a.startsWith('--') && a !== '--self-test' && a !== '--local') || (tag && !/^env-v[1-9][0-9]*$/.test(tag)) || (selfTest && tag)) {
   console.error('usage: node tools/release-gate.mjs [env-vN | --self-test]   (the tag must look like env-v1, env-v2, ...)'); process.exit(90);
 }
 
@@ -34,7 +37,9 @@ let failed = 0;
 const line = (kind, c, text) => console.log(`${kind}  [${fmt(c.num)}] ${c.id}: ${text}`);
 
 if (!selfTest) {
-  const ctx = realCtx(root, tag);
+  // --local: also look for this machine's user name and C:/Users paths in history. Derived at run time, never written into a tracked file.
+  const local = localMode ? { user: userInfo().username === 'SYSTEM' ? '' : userInfo().username } : null;
+  const ctx = realCtx(root, tag, local);
   const dirty = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).stdout.trim();
   console.log(`release gate for ${tag ?? '(no tag given)'}: ${CHECKS.length} checks over ${ctx.files().length} tracked files${dirty ? '; NOTE the working tree has uncommitted changes (the gate reads the working tree)' : ''}`);
   for (const c of CHECKS) {
@@ -88,6 +93,7 @@ for (const c of CHECKS) {
     const opts = { tag: fx.tag ?? controlTag };
     if (fx.ports) opts.ports = fx.ports;
     if (fx.links) opts.links = fx.links;
+    if (fx.historyInput) opts.historyInput = fx.historyInput;
     let repo;
     if (fx.gitFixture === 'seed-changed') { repo = makeSeedRepo(true); opts.git = gitOps(repo.dir); }
     let res;
@@ -96,6 +102,38 @@ for (const c of CHECKS) {
     if (res.ok) sp('FAIL', `[${fmt(c.num)}] ${c.id}${label}: the failing fixture PASSED (the check cannot fail): ${res.text}`);
     else if (!fx.expect.test(res.text)) sp('FAIL', `[${fmt(c.num)}] ${c.id}${label}: failed, but not as expected (/${fx.expect.source}/): ${res.text}`);
     else sp('PASS', `[${fmt(c.num)}] ${c.id}${label}: fixture fails as intended: ${res.text.slice(0, 140)}`);
+  }
+}
+
+// check 16 for real: a throwaway repository whose OLD commit holds a fake token that a later commit removed. The tree of HEAD is clean, so a
+// tree scan cannot see it; the history scan must. Own directory only (marker, prefix, token), deleted after the checks.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'conduit-env-gatefix-'));
+  const token = randomBytes(8).toString('hex');
+  writeFileSync(join(dir, '.gatefix-marker'), token);
+  const g = (...a) => { const r = spawnSync('git', ['-c', 'user.name=gate', '-c', 'user.email=gate@example.com', '-c', 'commit.gpgsign=false', ...a], { cwd: dir, encoding: 'utf8' }); if (r.status !== 0) throw new Error(`git ${a.join(' ')}: ${r.stderr}`); };
+  try {
+    g('init', '-q');
+    const fake = `${'gh'}p_${randomBytes(18).toString('hex')}`; // 36 characters after the prefix, built at run time, never written into a tracked file
+    writeFileSync(join(dir, 'notes.txt'), `token = ${fake}\n`);
+    g('add', 'notes.txt'); g('commit', '-q', '-m', 'add notes');
+    writeFileSync(join(dir, 'notes.txt'), 'nothing here\n');
+    writeFileSync(join(dir, 'user.txt'), `written by ${userInfo().username}\n`);
+    g('add', 'notes.txt', 'user.txt'); g('commit', '-q', '-m', 'remove the token');
+    const headBlob = spawnSync('git', ['show', 'HEAD:notes.txt'], { cwd: dir, encoding: 'utf8' }).stdout;
+    const treeFindings = scanHistory({ diffText: `commit 0000000\n+++ b/notes.txt\n${headBlob.split('\n').map((l) => `+${l}`).join('\n')}\n` });
+    treeFindings.findings.length === 0 ? sp('PASS', '[ 16] history-scan: control: the HEAD tree of the temp repository is clean (a tree scan finds nothing)') : sp('FAIL', '[ 16] history-scan: the temp repository HEAD tree is not clean');
+    const hist = scanHistory(gitHistory(dir, null));
+    hist.findings.some((f) => f.kind === 'GitHub token' && f.path === 'notes.txt') ? sp('PASS', `[ 16] history-scan: the old commit's token is found although the tree is clean (${formatFindings(hist.findings)})`) : sp('FAIL', '[ 16] history-scan: the removed token in the old commit was NOT found');
+    const normalLocal = scanHistory(gitHistory(dir, null));
+    normalLocal.findings.some((f) => f.kind.includes('user name')) ? sp('FAIL', '[ 16] history-scan: normal mode reported the user name') : sp('PASS', '[ 16] history-scan: normal mode does not look for the user name (control for local mode)');
+    const local = scanHistory(gitHistory(dir, { user: userInfo().username }));
+    local.findings.some((f) => f.kind.includes('user name') && f.path === 'user.txt') ? sp('PASS', '[ 16] history-scan: local mode finds this machine\'s user name') : sp('FAIL', '[ 16] history-scan: local mode did NOT find the user name');
+  } finally {
+    const marker = existsSync(join(dir, '.gatefix-marker')) ? readFileSync(join(dir, '.gatefix-marker'), 'utf8') : '';
+    const d = resolve(dir);
+    if (d.startsWith(resolve(tmpdir()) + sep) && basename(d).startsWith('conduit-env-gatefix-') && marker === token) rmSync(d, { recursive: true, force: true });
+    else console.log(`note: not deleting ${d}`);
   }
 }
 

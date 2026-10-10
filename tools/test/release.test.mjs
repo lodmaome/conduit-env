@@ -45,7 +45,7 @@ for (const c of CHECKS) {
       if (fx.gitFixture) continue; // needs a temp git repository: covered by `node tools/release-gate.mjs --self-test`
       const tree = goldenTree();
       fx.mutate(tree);
-      const res = await c.run(treeCtx(tree, { tag: fx.tag ?? controlTag, ...(fx.ports ? { ports: fx.ports } : {}), ...(fx.links ? { links: fx.links } : {}) }));
+      const res = await c.run(treeCtx(tree, { tag: fx.tag ?? controlTag, ...(fx.ports ? { ports: fx.ports } : {}), ...(fx.links ? { links: fx.links } : {}), ...(fx.historyInput ? { historyInput: fx.historyInput } : {}) }));
       assert.equal(res.ok, false, `fixture ${fx.name ?? ''} passed: ${res.text}`);
       assert.match(res.text, fx.expect);
     }

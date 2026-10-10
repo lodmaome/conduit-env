@@ -3,6 +3,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { sha256 } from './release-checks.mjs';
+import { formatFindings, gitHistory, scanHistory } from './history-scan.mjs';
 import { GOLDEN_LICENSE, GOLDEN_PORTS } from './golden-tree.mjs';
 
 const lockHashLines = (read) => {
@@ -11,13 +12,16 @@ const lockHashLines = (read) => {
 };
 
 // tree: Map<path, string>. overrides replace single ctx members (a rendered-ports object, a links result, git helpers).
-export function treeCtx(tree, { tag = null, ports = GOLDEN_PORTS, links = { code: 0, text: '' }, git = {} } = {}) {
+export function treeCtx(tree, { tag = null, ports = GOLDEN_PORTS, links = { code: 0, text: '' }, git = {}, historyInput = {} } = {}) {
   const read = (p) => tree.get(p);
   return {
     tag,
     files: () => [...tree.keys()].sort(),
     read,
     exists: (p) => tree.has(p),
+    historyInput: () => ({ diffText: '', messages: [], paths: [], blobs: [], local: null, commits: 1, ...historyInput }),
+    scanHistory,
+    formatFindings,
     crlfInIndex: () => [...tree.keys()].filter((p) => (tree.get(p) ?? '').includes('\r')).sort(),
     lockHashes: () => lockHashLines(read),
     composePorts: async () => ports,
@@ -48,7 +52,7 @@ export function gitOps(cwd) {
   };
 }
 
-export function realCtx(root, tag) {
+export function realCtx(root, tag, local = null) {
   const ls = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' });
   if (ls.status !== 0) throw new Error(`git ls-files failed in ${root}`);
   const files = ls.stdout.split('\n').filter(Boolean).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -71,6 +75,9 @@ export function realCtx(root, tag) {
     files: () => files,
     read,
     exists: (p) => existsSync(resolve(root, p)),
+    historyInput: () => gitHistory(root, local),
+    scanHistory,
+    formatFindings,
     crlfInIndex: () => spawnSync('git', ['ls-files', '--eol'], { cwd: root, encoding: 'utf8' }).stdout.split('\n').filter((l) => /^i\/(crlf|mixed)\s/.test(l)).map((l) => l.split('\t')[1]).sort(),
     lockHashes: () => spawnSync('sh', ['tools/lock-hashes.sh'], { cwd: root, encoding: 'utf8' }).stdout,
     composePorts: async () => {

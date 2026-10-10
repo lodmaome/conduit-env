@@ -347,6 +347,30 @@ export const CHECKS = [
       { name: 'no numbered rules', mutate: (t) => t.set('docs/env/WORKING-AGREEMENT.md', '# Working agreement\n\n## 1. Working rules\n\nnothing\n\n## 2. Tests\n'), expect: /no numbered rules/ },
     ],
   },
+  {
+    id: 'history-scan', num: 16,
+    title: 'every reachable commit (not only the tree): no token-shaped strings, no password other than the documented local one, no file that should never be public; with --local also this machine\'s user name and C:\\Users paths',
+    async run(ctx) {
+      // presence control: the scan must see a token that only ever existed in an old commit, or it is blind
+      const probeToken = `${'gh'}p_${'A'.repeat(36)}`;
+      const probe = ctx.scanHistory({ diffText: `commit 0000000aaaa\n+++ b/probe.txt\n+x = ${probeToken}\n`, paths: ['probe/x.tar'] });
+      if (probe.findings.length < 2) return no('presence control failed: the scan did not see a token in an old commit and a forbidden path, so it may be blind');
+      const input = ctx.historyInput();
+      const r = ctx.scanHistory(input);
+      const local = input.local ? ` (local mode: user name and absolute paths included; ${r.infos.length} info line(s) about C:\\git\\... paths)` : '';
+      if (r.findings.length) return no(`${r.findings.length} finding(s) in ${r.commits} commits: ${ctx.formatFindings(r.findings)}${local}`);
+      return ok(`${r.commits} commits, all added lines, commit messages and ${input.paths.length} path entries scanned: no finding; largest blob ${input.blobs[0]?.size ?? 0} bytes${local}`);
+    },
+    fixtures: [
+      { name: 'a token in an old commit that a later commit removed', mutate: () => {}, historyInput: { diffText: `commit 1111111aaaa\n+++ b/notes.txt\n+token = ${'gh'}p_${'B'.repeat(36)}\ncommit 2222222bbbb\n+++ b/notes.txt\n-token = removed\n` }, expect: /GitHub token at commit 1111111, notes\.txt/ },
+      { name: 'a password other than the documented one, in an old commit', mutate: () => {}, historyInput: { diffText: 'commit 3333333cccc\n+++ b/x.env\n+DB_PASSWORD=hunter2hunter2\n' }, expect: /credential assignment at commit 3333333, x\.env/ },
+      { name: 'a tar archive in history', mutate: () => {}, historyInput: { paths: ['m2-evidence/t0.2/src.tar'] }, expect: /file that should never be public at m2-evidence\/t0\.2\/src\.tar/ },
+      { name: 'an evidence folder in history', mutate: () => {}, historyInput: { paths: ['x-evidence/log.txt'] }, expect: /file that should never be public at x-evidence\/log\.txt/ },
+      { name: 'a blob over 1 MB', mutate: () => {}, historyInput: { blobs: [{ size: 5_000_000, path: 'big.bin' }] }, expect: /blob larger than 1000000 bytes \(5000000\) at big\.bin/ },
+      { name: 'local mode: this machine\'s user name', mutate: () => {}, historyInput: { local: { user: 'someuser' }, diffText: 'commit 4444444dddd\n+++ b/a.md\n+see someuser here\n' }, expect: /user name at commit 4444444, a\.md/ },
+      { name: 'local mode: a C:\\Users path', mutate: () => {}, historyInput: { local: { user: 'someuser' }, diffText: `commit 5555555eeee\n+++ b/a.md\n+path C:\\${'Users'}\\somebody\\x\n` }, expect: /absolute Windows home path at commit 5555555, a\.md/ },
+    ],
+  },
   // ---- ported from the Milestone 1 gate ----
   {
     id: 'root-files', num: 'M1a',
