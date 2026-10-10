@@ -1,0 +1,32 @@
+# Pin drift report: compares every pin with what its remote says now. Read-only: it NEVER edits a pin, opens an issue or pushes.
+# A drifted or unreadable pin fails the job so that the failure is visible in the Actions list; the table is in the job summary.
+# Runs only where the repository variable ENV_CANONICAL is 'true'. KNOWN SILENT FAILURES (docs/env/RUNBOOK.md): a missing variable skips the job
+# with no alert, and GitHub disables scheduled workflows after a period of repository inactivity.
+name: env-pin-drift
+
+on:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    if: ${{ vars.ENV_CANONICAL == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node (pinned to the version measured locally)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.23.1'
+
+      - name: Compare the pins with their remotes
+        run: node tools/pin-drift.mjs --summary "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,84 @@
+# The environment's verification, as a reusable workflow. Attempts call it from their own workflow (docs/env/ATTEMPTS.md); the environment's
+# own wrapper (env-verify.yml) calls it with run-release-gate. It has no ENV_CANONICAL guard on purpose: attempts reuse it.
+# Read-only: contents: read, no secrets. Every action is pinned by commit SHA with its tag in a comment.
+name: env-verify-core
+
+on:
+  workflow_call:
+    inputs:
+      run-release-gate:
+        description: 'Run tools/release-gate.mjs for the newest env-vN entry of docs/env/CHANGELOG.md. Environment repository only: it fails on attempt files by design.'
+        type: boolean
+        default: false
+      chrome-no-sandbox:
+        description: 'Explicit opt-in: start Chrome with --no-sandbox (CONDUIT_CHROME_NO_SANDBOX=1). Off by default; set it only if the sandbox probe step shows Chrome cannot start with its sandbox.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out (full history, the release gate scans every commit)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node (pinned to the version measured locally)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.23.1'
+
+      - name: Record the runner (OS, shell, Docker, Compose, Node, Chrome)
+        run: |
+          echo "--- OS"; uname -a; head -3 /etc/os-release
+          echo "--- /bin/sh is: $(readlink -f /bin/sh)"
+          echo "--- Docker"; docker version --format 'client {{.Client.Version}} server {{.Server.Version}}'
+          echo "--- Compose"; docker compose version
+          echo "--- Node"; node --version
+          echo "--- Chrome (floats with the runner image; recorded here, not pinned)"
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          if [ -z "$CHROME" ]; then echo "no google-chrome on this runner"; exit 1; fi
+          echo "CHROME_BIN=$CHROME" >> "$GITHUB_ENV"
+          "$CHROME" --version
+
+      - name: Chrome sandbox probe (informational, never fails the job)
+        continue-on-error: true
+        run: |
+          set +e
+          timeout 30 "$CHROME_BIN" --headless=new --disable-gpu --dump-dom about:blank > /tmp/chrome-probe.txt 2>&1
+          echo "chrome with its sandbox: exit $?"
+          tail -n 5 /tmp/chrome-probe.txt
+
+      - name: Start the stack (the bypass, so an attempt's compose.override.yaml cannot change what is verified)
+        run: docker compose -f compose.yaml up -d --wait
+
+      - name: Verify (HTTP checks, migrations check, real-Chrome browser check)
+        env:
+          CONDUIT_CHROME_NO_SANDBOX: ${{ inputs.chrome-no-sandbox && '1' || '' }}
+        run: node tools/verify.mjs
+
+      - name: Gate tooling (shellcheck, actionlint, yamllint, hadolint, lychee, compose config, node --test)
+        run: sh tools/gate.sh
+
+      - name: Unit tests
+        run: node --test tools/test/*.test.mjs
+
+      - name: Release gate (environment repository only)
+        if: ${{ inputs.run-release-gate }}
+        run: |
+          TAG="$(sed -n 's/^## \(env-v[0-9][0-9]*\).*/\1/p' docs/env/CHANGELOG.md | head -n 1)"
+          echo "release gate for the newest changelog entry: $TAG"
+          node tools/release-gate.mjs "$TAG"
+          node tools/release-gate.mjs --self-test
+
+      - name: Stack state and logs (on failure)
+        if: ${{ failure() }}
+        run: |
+          docker compose -f compose.yaml ps -a
+          docker compose -f compose.yaml logs --no-color --tail 100

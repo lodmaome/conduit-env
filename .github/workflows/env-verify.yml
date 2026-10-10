@@ -1,0 +1,23 @@
+# The environment repository's own verification: a thin wrapper around env-verify-core.yml. It runs only where the repository variable
+# ENV_CANONICAL is 'true' (not by repository-name slug, so a clone or a fork stays quiet until its owner sets the variable).
+# KNOWN SILENT FAILURE: if the variable is missing, the job is skipped with no alert. See docs/env/RUNBOOK.md.
+name: env-verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    # A job that calls a reusable workflow cannot carry timeout-minutes; the called job sets it.
+    if: ${{ vars.ENV_CANONICAL == 'true' }}
+    uses: ./.github/workflows/env-verify-core.yml
+    with:
+      run-release-gate: true
+    permissions:
+      contents: read

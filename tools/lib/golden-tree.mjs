@@ -27,7 +27,8 @@ export function goldenTree() {
   const header = [`backend-sha7: ${sha.slice(0, 7)}`, `requirements-lock-sha256: ${sha256(reqLock)}`, `build-tools-lock-sha256: ${sha256(toolsLock)}`];
   t.set(`docs/env/contract/openapi.${sha.slice(0, 7)}.json`, buildSnapshot('{"openapi":"3.1.0","paths":{}}', `${header.join('\n')}\n`));
   t.set('docs/env/third-party/python-licences.txt', `requirements-lock-sha256: ${sha256(reqLock)}\nfoo 1 MIT\n`);
-  t.set('docs/env/THIRD-PARTY.md', `| Name | Pin |\n|---|---|\n| \`BACKEND_SHA\` | backend | ${sha.slice(0, 12)} |\n| \`PYTHON_IMAGE\` | python | python ${'b'.repeat(12)} |\n| \`SHELLCHECK_IMAGE\` | shellcheck | koalaman/shellcheck ${'c'.repeat(12)} |\n`);
+  t.set('docs/env/THIRD-PARTY.md', `| Name | Pin |\n|---|---|\n| \`BACKEND_SHA\` | backend | ${sha.slice(0, 12)} |\n| \`PYTHON_IMAGE\` | python | python ${'b'.repeat(12)} |\n| \`SHELLCHECK_IMAGE\` | shellcheck | koalaman/shellcheck ${'c'.repeat(12)} |\n| actions/checkout | action | ${'d'.repeat(12)} |\n`);
+  t.set('.github/workflows/env-x.yml', `name: x\non:\n  pull_request:\npermissions:\n  contents: read\njobs:\n  verify:\n    runs-on: ubuntu-24.04\n    timeout-minutes: 5\n    steps:\n      - uses: actions/checkout@${'d'.repeat(40)} # v7.0.1\n      - run: echo hi\n  call:\n    uses: ./.github/workflows/other.yml\n`);
   t.set('docs/env/reset-and-boot.md', '# Reset\nuse tools/reset.sh\n');
   t.set('docs/env/WORKING-AGREEMENT.md', '# Working agreement\n\n## 1. Working rules\n\n3. **[everyone]** probe.\n4. **Split rule.**\n   - **[environment repo only]** a\n   - **[attempts only]** b\n\n## 2. Tests\n\nall written.\n');
   t.set('docs/env/adr/0001-pair-lock-and-migrations.md', 'Record document: the old file was called constraints.txt.\n');

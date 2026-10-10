@@ -105,6 +105,12 @@ function mutateSnapshot(tree, fn) {
   tree.set(p, `${JSON.stringify(doc, null, 2)}\n`);
 }
 
+// Fixture helper: edits the golden workflow file.
+function editWf(tree, fn) {
+  const p = '.github/workflows/env-x.yml';
+  tree.set(p, fn(tree.get(p)));
+}
+
 const ok = (text) => ({ ok: true, text });
 const no = (text) => ({ ok: false, text });
 const skip = (text) => ({ ok: true, skipped: true, text });
@@ -369,6 +375,53 @@ export const CHECKS = [
       { name: 'a blob over 1 MB', mutate: () => {}, historyInput: { blobs: [{ size: 5_000_000, path: 'big.bin' }] }, expect: /blob larger than 1000000 bytes \(5000000\) at big\.bin/ },
       { name: 'local mode: this machine\'s user name', mutate: () => {}, historyInput: { local: { user: 'someuser' }, diffText: 'commit 4444444dddd\n+++ b/a.md\n+see someuser here\n' }, expect: /user name at commit 4444444, a\.md/ },
       { name: 'local mode: a C:\\Users path', mutate: () => {}, historyInput: { local: { user: 'someuser' }, diffText: `commit 5555555eeee\n+++ b/a.md\n+path C:\\${'Users'}\\somebody\\x\n` }, expect: /absolute Windows home path at commit 5555555, a\.md/ },
+    ],
+  },
+  {
+    id: 'workflow-rules', num: 17,
+    title: 'workflows: every uses: pinned by a 40-hex SHA with its tag in a comment and a THIRD-PARTY row; top-level permissions; timeout-minutes on every job; no pull_request_target; no secrets',
+    async run(ctx) {
+      const wfs = ctx.files().filter((f) => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(f));
+      if (wfs.length === 0) return skip('0 workflow files (.github/workflows/ is empty): nothing to check; this is reported, not a pass');
+      const tp = lines(ctx.read('docs/env/THIRD-PARTY.md') ?? '').filter((l) => l.startsWith('|'));
+      const bad = [];
+      for (const f of wfs) {
+        const raw = lines(ctx.read(f));
+        const code = raw.filter((l) => !/^\s*#/.test(l)).map((l) => l.replace(/\s#.*$/, ''));
+        if (!code.some((l) => /^permissions:/.test(l))) bad.push(`${f}: no top-level permissions:`);
+        if (code.some((l) => /pull_request_target/.test(l))) bad.push(`${f}: uses pull_request_target`);
+        if (code.some((l) => /\bsecrets\b/.test(l))) bad.push(`${f}: refers to secrets`);
+        raw.forEach((l, i) => {
+          const m = /^\s*-?\s*uses:\s*(\S+)(.*)$/.exec(l);
+          if (!m || m[1].startsWith('./')) return;
+          const at = /^([^@\s]+)@([0-9a-f]{40})$/.exec(m[1]);
+          if (!at) { bad.push(`${f}:${i + 1}: ${m[1]} is not pinned by a full 40-hex commit SHA`); return; }
+          if (!/^\s*#\s*\S+/.test(m[2])) bad.push(`${f}:${i + 1}: ${at[1]}@${at[2].slice(0, 7)}... has no tag in a trailing comment`);
+          const repo = at[1].split('/').slice(0, 2).join('/');
+          if (!tp.some((r) => r.includes(repo) && r.includes(at[2].slice(0, 12)))) bad.push(`${f}:${i + 1}: no THIRD-PARTY.md row with ${repo} and ${at[2].slice(0, 12)}`);
+        });
+        // every job that does not call a reusable workflow needs timeout-minutes (a calling job cannot carry it)
+        const jobsAt = raw.findIndex((l) => /^jobs:\s*$/.test(l));
+        if (jobsAt < 0) { bad.push(`${f}: no jobs:`); continue; }
+        const heads = [];
+        for (let i = jobsAt + 1; i < raw.length; i++) if (/^ {2}[A-Za-z0-9_-]+:\s*$/.test(raw[i])) heads.push(i);
+        heads.forEach((h, k) => {
+          const body = raw.slice(h + 1, heads[k + 1] ?? raw.length);
+          const name = raw[h].trim().replace(/:$/, '');
+          if (body.some((l) => /^ {4}uses:/.test(l))) return;
+          if (!body.some((l) => /^ {4}timeout-minutes:\s*\d+/.test(l))) bad.push(`${f}: job ${name} has no timeout-minutes`);
+        });
+      }
+      return bad.length ? no(bad.join('; ')) : ok(`${wfs.length} workflow file(s): SHA-pinned uses with tag comments and THIRD-PARTY rows, permissions present, timeouts present, no pull_request_target, no secrets`);
+    },
+    fixtures: [
+      { name: 'unpinned uses', mutate: (t) => editWf(t, (s) => s.replace(/actions\/checkout@[0-9a-f]{40}/, 'actions/checkout@v4')), expect: /actions\/checkout@v4 is not pinned by a full 40-hex commit SHA/ },
+      { name: 'pinned by SHA without a tag comment', mutate: (t) => editWf(t, (s) => s.replace(/ # v7\.0\.1/, '')), expect: /has no tag in a trailing comment/ },
+      { name: 'a pinned action without a THIRD-PARTY row', mutate: (t) => t.set('docs/env/THIRD-PARTY.md', t.get('docs/env/THIRD-PARTY.md').split('\n').filter((l) => !l.includes('actions/checkout')).join('\n')), expect: /no THIRD-PARTY\.md row with actions\/checkout/ },
+      { name: 'no top-level permissions', mutate: (t) => editWf(t, (s) => s.replace(/^permissions:\n {2}contents: read\n/m, '')), expect: /no top-level permissions:/ },
+      { name: 'a job without timeout-minutes', mutate: (t) => editWf(t, (s) => s.replace(/ {4}timeout-minutes: 5\n/, '')), expect: /job verify has no timeout-minutes/ },
+      { name: 'pull_request_target', mutate: (t) => editWf(t, (s) => s.replace('pull_request:', 'pull_request_target:')), expect: /uses pull_request_target/ },
+      { name: 'a secret', mutate: (t) => editWf(t, (s) => `${s}        env:\n          TOKEN: \${{ secrets.TOKEN }}\n`), expect: /refers to secrets/ },
     ],
   },
   // ---- ported from the Milestone 1 gate ----
