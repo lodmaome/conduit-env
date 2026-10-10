@@ -110,7 +110,11 @@ function cdpClient(wsUrl) {
 
 let exitCode = 0;
 try {
-  child = spawn(chromeBin, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--disable-gpu', 'about:blank'],
+  // --no-sandbox is an explicit opt-in (CONDUIT_CHROME_NO_SANDBOX=1), never a default: some CI runners forbid Chrome's sandbox.
+  // The workflow that needs it sets the variable; the check says so on its first output line.
+  const noSandbox = process.env.CONDUIT_CHROME_NO_SANDBOX === '1';
+  if (noSandbox) console.log('note: CONDUIT_CHROME_NO_SANDBOX=1, Chrome starts with --no-sandbox (explicit opt-in)');
+  child = spawn(chromeBin, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--disable-gpu', ...(noSandbox ? ['--no-sandbox'] : []), 'about:blank'],
     { stdio: 'ignore', windowsHide: true });
   child.on('exit', () => { exited = true; });
   child.on('error', (e) => { die(`could not start Chrome: ${e.message}`); });
