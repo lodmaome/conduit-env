@@ -18,6 +18,7 @@ jobs:
     if: ${{ vars.ENV_CANONICAL == 'true' }}
     uses: ./.github/workflows/env-verify-core.yml
     with:
+      run-gate: true
       run-release-gate: true
     permissions:
       contents: read

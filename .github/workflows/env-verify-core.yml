@@ -6,6 +6,10 @@ name: env-verify-core
 on:
   workflow_call:
     inputs:
+      run-gate:
+        description: 'Run the environment gate tooling (sh tools/gate.sh) and the environment unit tests (node --test tools/test/*.test.mjs). Off by default: an attempt verifies its stack and runs its own tests; the environment wrapper turns it on.'
+        type: boolean
+        default: false
       run-release-gate:
         description: 'Run tools/release-gate.mjs for the newest env-vN entry of docs/env/CHANGELOG.md. Environment repository only: it fails on attempt files by design.'
         type: boolean
@@ -64,9 +68,11 @@ jobs:
         run: node tools/verify.mjs
 
       - name: Gate tooling (shellcheck, actionlint, yamllint, hadolint, lychee, compose config, node --test)
+        if: ${{ inputs.run-gate }}
         run: sh tools/gate.sh
 
       - name: Unit tests
+        if: ${{ inputs.run-gate }}
         run: node --test tools/test/*.test.mjs
 
       - name: Release gate (environment repository only)
