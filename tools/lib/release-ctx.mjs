@@ -52,7 +52,7 @@ export function gitOps(cwd) {
   };
 }
 
-export function realCtx(root, tag, local = null) {
+export function realCtx(root, tag, local = null, allRefs = false) {
   const ls = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' });
   if (ls.status !== 0) throw new Error(`git ls-files failed in ${root}`);
   const files = ls.stdout.split('\n').filter(Boolean).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -75,7 +75,7 @@ export function realCtx(root, tag, local = null) {
     files: () => files,
     read,
     exists: (p) => existsSync(resolve(root, p)),
-    historyInput: () => gitHistory(root, local),
+    historyInput: () => gitHistory(root, local, allRefs),
     scanHistory,
     formatFindings,
     crlfInIndex: () => spawnSync('git', ['ls-files', '--eol'], { cwd: root, encoding: 'utf8' }).stdout.split('\n').filter((l) => /^i\/(crlf|mixed)\s/.test(l)).map((l) => l.split('\t')[1]).sort(),

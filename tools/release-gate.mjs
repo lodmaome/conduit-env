@@ -3,6 +3,7 @@
 //   node tools/release-gate.mjs env-vN          all checks, for the candidate tag env-vN (a tag is NOT created)
 //   node tools/release-gate.mjs                 the tag-independent checks; the tag checks print SKIP, never a silent pass
 //   node tools/release-gate.mjs env-vN --local  also look for this machine's Windows user name and C:/Users paths in history (derived at run time)
+//   node tools/release-gate.mjs env-vN --all-refs  scan every ref in check 16 (default: refs/heads/main and the tags, i.e. what is pushed)
 //   node tools/release-gate.mjs --self-test     every check against its failing fixture (must fail) and a golden control (must pass)
 //
 // Exit status = number of failed checks (or failed self-test assertions); 90 = bad usage. Verdict lines carry no timestamps.
@@ -27,8 +28,9 @@ if (!existsSync(join(root, 'compose.yaml')) || !existsSync(join(root, 'env/OWNED
 const args = process.argv.slice(2);
 const selfTest = args.includes('--self-test');
 const localMode = args.includes('--local');
+const allRefs = args.includes('--all-refs');
 const tag = args.find((a) => !a.startsWith('--')) ?? null;
-if (args.some((a) => a.startsWith('--') && a !== '--self-test' && a !== '--local') || (tag && !/^env-v[1-9][0-9]*$/.test(tag)) || (selfTest && tag)) {
+if (args.some((a) => a.startsWith('--') && a !== '--self-test' && a !== '--local' && a !== '--all-refs') || (tag && !/^env-v[1-9][0-9]*$/.test(tag)) || (selfTest && tag)) {
   console.error('usage: node tools/release-gate.mjs [env-vN | --self-test]   (the tag must look like env-v1, env-v2, ...)'); process.exit(90);
 }
 
@@ -39,7 +41,7 @@ const line = (kind, c, text) => console.log(`${kind}  [${fmt(c.num)}] ${c.id}: $
 if (!selfTest) {
   // --local: also look for this machine's user name and C:/Users paths in history. Derived at run time, never written into a tracked file.
   const local = localMode ? { user: userInfo().username === 'SYSTEM' ? '' : userInfo().username } : null;
-  const ctx = realCtx(root, tag, local);
+  const ctx = realCtx(root, tag, local, allRefs);
   const dirty = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).stdout.trim();
   console.log(`release gate for ${tag ?? '(no tag given)'}: ${CHECKS.length} checks over ${ctx.files().length} tracked files${dirty ? '; NOTE the working tree has uncommitted changes (the gate reads the working tree)' : ''}`);
   for (const c of CHECKS) {
@@ -113,7 +115,7 @@ for (const c of CHECKS) {
   writeFileSync(join(dir, '.gatefix-marker'), token);
   const g = (...a) => { const r = spawnSync('git', ['-c', 'user.name=gate', '-c', 'user.email=gate@example.com', '-c', 'commit.gpgsign=false', ...a], { cwd: dir, encoding: 'utf8' }); if (r.status !== 0) throw new Error(`git ${a.join(' ')}: ${r.stderr}`); };
   try {
-    g('init', '-q');
+    g('init', '-q', '-b', 'main');
     const fake = `${'gh'}p_${randomBytes(18).toString('hex')}`; // 36 characters after the prefix, built at run time, never written into a tracked file
     writeFileSync(join(dir, 'notes.txt'), `token = ${fake}\n`);
     g('add', 'notes.txt'); g('commit', '-q', '-m', 'add notes');
@@ -129,6 +131,18 @@ for (const c of CHECKS) {
     normalLocal.findings.some((f) => f.kind.includes('user name')) ? sp('FAIL', '[ 16] history-scan: normal mode reported the user name') : sp('PASS', '[ 16] history-scan: normal mode does not look for the user name (control for local mode)');
     const local = scanHistory(gitHistory(dir, { user: userInfo().username }));
     local.findings.some((f) => f.kind.includes('user name') && f.path === 'user.txt') ? sp('PASS', '[ 16] history-scan: local mode finds this machine\'s user name') : sp('FAIL', '[ 16] history-scan: local mode did NOT find the user name');
+    // a secret only on a side branch: not on main, so not pushed with main. Default scan: not found. --all-refs: found.
+    g('switch', '-q', '-c', 'backup/x');
+    const sideFake = `${'gh'}p_${randomBytes(18).toString('hex')}`;
+    writeFileSync(join(dir, 'side.txt'), `token = ${sideFake}\n`);
+    g('add', 'side.txt'); g('commit', '-q', '-m', 'side branch only');
+    g('switch', '-q', 'main');
+    const sideDefault = scanHistory(gitHistory(dir, null));
+    sideDefault.findings.some((f) => f.path === 'side.txt') ? sp('FAIL', '[ 16] history-scan: the default scan reported a secret that only exists on backup/x') : sp('PASS', '[ 16] history-scan: a secret only on backup/x is NOT found by the default scan (refs/heads/main and tags)');
+    const sideAll = scanHistory(gitHistory(dir, null, true));
+    sideAll.findings.some((f) => f.kind === 'GitHub token' && f.path === 'side.txt') ? sp('PASS', '[ 16] history-scan: --all-refs finds the secret that only exists on backup/x') : sp('FAIL', '[ 16] history-scan: --all-refs did NOT find the secret on backup/x');
+    const mainOld = scanHistory(gitHistory(dir, null));
+    mainOld.findings.some((f) => f.path === 'notes.txt') ? sp('PASS', '[ 16] history-scan: the removed secret in an old commit of main is still found by the default scan') : sp('FAIL', '[ 16] history-scan: the default scan lost the old commit of main');
   } finally {
     const marker = existsSync(join(dir, '.gatefix-marker')) ? readFileSync(join(dir, '.gatefix-marker'), 'utf8') : '';
     const d = resolve(dir);

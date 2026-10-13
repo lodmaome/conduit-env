@@ -73,12 +73,14 @@ const git = (cwd, args) => {
   return r.stdout;
 };
 
-// Real input for a repository: every reachable commit (all refs), all paths ever touched, the biggest blobs.
-export function gitHistory(cwd, local = null) {
-  const diffText = git(cwd, ['log', '-p', '--all', '--no-color', '--no-ext-diff', '--format=commit %H']);
-  const msgs = git(cwd, ['log', '--all', '--format=%H%x00%B%x01']).split('\x01').map((s) => s.trim()).filter(Boolean).map((s) => { const [commit, text] = s.split('\x00'); return { commit, text: text ?? '' }; });
-  const paths = git(cwd, ['log', '--all', '--name-only', '--format=']).split('\n').filter(Boolean);
-  const objs = git(cwd, ['rev-list', '--objects', '--all']);
+// Real input for a repository: every commit reachable from the refs scanned, all paths ever touched there, the biggest blobs.
+// By default it scans what will be pushed: refs/heads/main and every tag. allRefs = true scans every ref (other branches, remotes, stashes).
+export function gitHistory(cwd, local = null, allRefs = false) {
+  const refs = allRefs ? ['--all'] : ['refs/heads/main', '--tags'];
+  const diffText = git(cwd, ['log', '-p', ...refs, '--no-color', '--no-ext-diff', '--format=commit %H']);
+  const msgs = git(cwd, ['log', ...refs, '--format=%H%x00%B%x01']).split('\x01').map((s) => s.trim()).filter(Boolean).map((s) => { const [commit, text] = s.split('\x00'); return { commit, text: text ?? '' }; });
+  const paths = git(cwd, ['log', ...refs, '--name-only', '--format=']).split('\n').filter(Boolean);
+  const objs = git(cwd, ['rev-list', '--objects', ...refs]);
   const batch = spawnSync('git', ['cat-file', '--batch-check=%(objecttype) %(objectsize) %(rest)'], { cwd, input: objs, encoding: 'utf8', maxBuffer: 1 << 28 });
   const blobs = batch.stdout.split('\n').filter((l) => l.startsWith('blob ')).map((l) => { const [, size, ...rest] = l.split(' '); return { size: Number(size), path: rest.join(' ') }; }).sort((a, b) => b.size - a.size);
   return { diffText, messages: msgs, paths, blobs: blobs.slice(0, 50), local, commits: msgs.length };
