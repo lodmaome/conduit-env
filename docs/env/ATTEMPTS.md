@@ -68,6 +68,38 @@ The environment never ships that file, and its own checks bypass it. The rules b
 The backend serves 25 operations: the 19 RealWorld ones and six under `/auth/` that are not part of RealWorld. A coverage-gap flagger must exclude every `/auth/` path.
 The list and the snapshot are in [contract/README.md](contract/README.md).
 
+## 5a. Verifying in GitHub Actions: the snippet that was tested
+
+The environment ships a reusable workflow, `.github/workflows/env-verify-core.yml` (OWNED: it arrives with the clone and with every env tag). An attempt calls it from a workflow of its own. This file was run on a private rehearsal repository on 2026-10-13 and both jobs passed (https://github.com/lodmaome/conduit-env-rehearsal/actions/runs/38475199746):
+
+```yaml
+name: attempt-verify
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-only:
+    uses: ./.github/workflows/env-verify-core.yml
+    permissions:
+      contents: read
+
+  verify-with-gate:
+    uses: ./.github/workflows/env-verify-core.yml
+    with:
+      run-gate: true
+    permissions:
+      contents: read
+```
+
+- `verify-only` (the defaults) starts the stack with `docker compose -f compose.yaml up -d --wait` and runs `node tools/verify.mjs`; its log showed no gate or unit-test output (seen). `run-gate: true` adds `sh tools/gate.sh` and the environment's own unit tests (`node --test tools/test/*.test.mjs`); in an attempt you usually want `verify-only` plus your own test job. The input `run-release-gate` exists too: **do not set it in an attempt**, see the next point.
+- **Do not set the repository variable `ENV_CANONICAL` in an attempt.** The environment's wrapper (`env-verify.yml`) is skipped without it (seen). With it set, the wrapper runs the release gate, which checks the environment repository and **fails on attempt files by design**: in the rehearsal it failed on `[3] ownership: not OWNED or SEED: .github/workflows/attempt-verify.yml` and nothing else.
+- The core uses `-f compose.yaml`, so an attempt's `compose.override.yaml` does not change what it verifies. Run your own tests against your override in your own job.
+- Chrome comes from the runner image and floats; the core logs its version. If Chrome cannot start with its sandbox on some runner, the core has an explicit opt-in input `chrome-no-sandbox` (off by default; it was not needed on the runner that was tested).
+
 ## 5b. The page requests external hosts
 
 The frontend's `index.html` loads two external stylesheets from `code.ionicframework.com` and `fonts.googleapis.com`, and the font stylesheet requests files from `fonts.gstatic.com`. A test run on a blocked or offline network sees different timing (measured once: load event 65 ms with the two stylesheet hosts blocked against 262 ms unblocked) and different fonts and icons, but the stack itself works (the browser check's assertions passed either way).

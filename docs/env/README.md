@@ -89,8 +89,10 @@ node --test tools/test/*.test.mjs
 ## What is not claimed
 
 - An **offline** `docker compose up`: not tested. Every `up` runs a build pass, and whether BuildKit contacts the network when everything is cached was not checked.
-- **Linux, macOS and GitHub Actions:** nothing has run there. Every measurement is from one Windows 11 laptop.
-- A **Compose version other than 5.5.1**, a **Chrome other than 154.0.8037.98**, and Chromium or headless-shell builds.
+- **macOS**, and Linux other than the one runner described next: nothing has run there. Every local measurement is from one Windows 11 laptop.
+- **GitHub Actions: seen once, in a private rehearsal repository on 2026-10-13** (not the canonical repository), on one `ubuntu-24.04` runner (Ubuntu 24.04.5, kernel 6.17, `/bin/sh` is dash, runner image `ubuntu24/20261004.327`) with Docker 28.0.4, **Docker Compose v2.38.2**, Node 22.23.1 (installed by `actions/setup-node`) and **Google Chrome 154.0.8037.97**. There `docker compose -f compose.yaml up -d --wait` took 66 to 67 s from a cold runner, `node tools/verify.mjs` passed 5 of 5 including the browser check, Chrome started with its own sandbox (the `--no-sandbox` opt-in was not needed), and the gate (`sh tools/gate.sh`) and the unit tests passed. Evidence and the runs: ADR 0004 section 4.
+- A **Compose version other than 5.5.1 (local) and 2.38.2 (the runner)**: the documented lower bound 2.20.0 is still untested. A **Chrome other than 154.0.8037.98 (local) and 154.0.8037.97 (the runner)**, and Chromium or headless-shell builds.
+- A **scheduled** run of the pin-drift workflow: not seen (only manual dispatch was run).
 - **A hermetic page.** The served `index.html` loads two external stylesheets at view time, `//code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css` and `//fonts.googleapis.com/css?family=Lora:400,700|Source+Sans+Pro:300,400,600,700`, and the font stylesheet in turn requests font files from `fonts.gstatic.com`. With the two stylesheet hosts blocked, the browser check's three assertions still passed (one run, 2026-10-09): the load event came after 65 ms against 262 ms unblocked, and the page showed system fonts and no icons (ADR 0002 section 10). A blocked or offline network changes timing and looks, not the stack.
 - **Byte-identical rebuilds of the images.** The Python packages are hash-pinned; the apt packages are not (76 in the backend image stage, 17 in each throwaway fetch stage), so rebuilt images can differ.
 - Anything about **production use**.
