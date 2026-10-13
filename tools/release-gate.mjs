@@ -141,6 +141,12 @@ for (const c of CHECKS) {
     sideDefault.findings.some((f) => f.path === 'side.txt') ? sp('FAIL', '[ 16] history-scan: the default scan reported a secret that only exists on backup/x') : sp('PASS', '[ 16] history-scan: a secret only on backup/x is NOT found by the default scan (refs/heads/main and tags)');
     const sideAll = scanHistory(gitHistory(dir, null, true));
     sideAll.findings.some((f) => f.kind === 'GitHub token' && f.path === 'side.txt') ? sp('PASS', '[ 16] history-scan: --all-refs finds the secret that only exists on backup/x') : sp('FAIL', '[ 16] history-scan: --all-refs did NOT find the secret on backup/x');
+    // a detached checkout with no local main (what a pull_request run in Actions has): HEAD stands in for main and the old commit is still found
+    g('switch', '-q', '--detach');
+    g('branch', '-q', '-D', 'main');
+    const detached = scanHistory(gitHistory(dir, null));
+    detached.findings.some((f) => f.path === 'notes.txt') ? sp('PASS', '[ 16] history-scan: with a detached HEAD and no local main, HEAD stands in for main and the old commit is found') : sp('FAIL', '[ 16] history-scan: a detached checkout without main broke or blinded the scan');
+    g('switch', '-q', '-c', 'main');
     const mainOld = scanHistory(gitHistory(dir, null));
     mainOld.findings.some((f) => f.path === 'notes.txt') ? sp('PASS', '[ 16] history-scan: the removed secret in an old commit of main is still found by the default scan') : sp('FAIL', '[ 16] history-scan: the default scan lost the old commit of main');
   } finally {

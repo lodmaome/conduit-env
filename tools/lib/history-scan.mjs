@@ -75,8 +75,10 @@ const git = (cwd, args) => {
 
 // Real input for a repository: every commit reachable from the refs scanned, all paths ever touched there, the biggest blobs.
 // By default it scans what will be pushed: refs/heads/main and every tag. allRefs = true scans every ref (other branches, remotes, stashes).
+// Where there is no local branch main (a pull_request checkout in Actions is a detached merge commit), HEAD stands in for it.
 export function gitHistory(cwd, local = null, allRefs = false) {
-  const refs = allRefs ? ['--all'] : ['refs/heads/main', '--tags'];
+  const hasMain = spawnSync('git', ['rev-parse', '--verify', '--quiet', 'refs/heads/main'], { cwd }).status === 0;
+  const refs = allRefs ? ['--all'] : [hasMain ? 'refs/heads/main' : 'HEAD', '--tags'];
   const diffText = git(cwd, ['log', '-p', ...refs, '--no-color', '--no-ext-diff', '--format=commit %H']);
   const msgs = git(cwd, ['log', ...refs, '--format=%H%x00%B%x01']).split('\x01').map((s) => s.trim()).filter(Boolean).map((s) => { const [commit, text] = s.split('\x00'); return { commit, text: text ?? '' }; });
   const paths = git(cwd, ['log', ...refs, '--name-only', '--format=']).split('\n').filter(Boolean);
