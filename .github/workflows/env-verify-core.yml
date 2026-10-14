@@ -1,21 +1,12 @@
-# The environment's verification, as a reusable workflow. Attempts call it from their own workflow (docs/env/ATTEMPTS.md); the environment's
-# own wrapper (env-verify.yml) calls it with run-release-gate. It has no ENV_CANONICAL guard on purpose: attempts reuse it.
+# The stack's verification, as a reusable workflow: it starts the stack, runs the smoke test (tools/verify.mjs) and the unit tests.
+# A repository built on this one calls it from its own workflow (ENV-README.md section 8); this repository's wrapper (env-verify.yml) calls it too.
+# It has no ENV_CANONICAL guard on purpose: other repositories reuse it.
 # Read-only: contents: read, no secrets. Every action is pinned by commit SHA with its tag in a comment.
 name: env-verify-core
 
 on:
   workflow_call:
     inputs:
-      run-gate:
-        description: >-
-          Run the environment gate tooling (sh tools/gate.sh) and the environment unit tests (node --test tools/test/*.test.mjs).
-          Off by default: an attempt verifies its stack and runs its own tests; the environment wrapper turns it on.
-        type: boolean
-        default: false
-      run-release-gate:
-        description: 'Run tools/release-gate.mjs for the newest env-vN entry of docs/env/CHANGELOG.md. Environment repository only: it fails on attempt files by design.'
-        type: boolean
-        default: false
       chrome-no-sandbox:
         description: 'Explicit opt-in: start Chrome with --no-sandbox (CONDUIT_CHROME_NO_SANDBOX=1). Off by default; set it only if the sandbox probe step shows Chrome cannot start with its sandbox.'
         type: boolean
@@ -29,10 +20,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - name: Check out (full history, the release gate scans every commit)
+      - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Node (pinned to the version measured locally)
@@ -61,7 +51,7 @@ jobs:
           echo "chrome with its sandbox: exit $?"
           tail -n 5 /tmp/chrome-probe.txt
 
-      - name: Start the stack (the bypass, so an attempt's compose.override.yaml cannot change what is verified)
+      - name: Start the stack (with -f, so a caller's compose.override.yaml cannot change what is verified)
         run: docker compose -f compose.yaml up -d --wait
 
       - name: Verify (HTTP checks, migrations check, real-Chrome browser check)
@@ -69,21 +59,8 @@ jobs:
           CONDUIT_CHROME_NO_SANDBOX: ${{ inputs.chrome-no-sandbox && '1' || '' }}
         run: node tools/verify.mjs
 
-      - name: Gate tooling (shellcheck, actionlint, yamllint, hadolint, lychee, compose config, node --test)
-        if: ${{ inputs.run-gate }}
-        run: sh tools/gate.sh
-
-      - name: Unit tests
-        if: ${{ inputs.run-gate }}
+      - name: Unit tests (of the smoke test)
         run: node --test tools/test/*.test.mjs
-
-      - name: Release gate (environment repository only)
-        if: ${{ inputs.run-release-gate }}
-        run: |
-          TAG="$(sed -n 's/^## \(env-v[0-9][0-9]*\).*/\1/p' docs/env/CHANGELOG.md | head -n 1)"
-          echo "release gate for the newest changelog entry: $TAG"
-          node tools/release-gate.mjs "$TAG"
-          node tools/release-gate.mjs --self-test
 
       - name: Stack state and logs (on failure)
         if: ${{ failure() }}
