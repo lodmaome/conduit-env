@@ -271,6 +271,7 @@ Documented Docker behaviour, not run by the author:
 docker compose down -v
 ```
 
+Run `docker compose down` first: stopped containers still reference the images, and `docker rmi` refuses to remove an image that a container uses.
 Documented Docker behaviour, not run by the author (replace the two tags with the values of `BACKEND_SHA` and `FRONTEND_SHA` from `env/pins.env`):
 
 ```bash

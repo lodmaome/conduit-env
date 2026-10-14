@@ -62,6 +62,9 @@ jobs:
       - name: Unit tests (of the smoke test)
         run: node --test tools/test/*.test.mjs
 
+      - name: Project-name guard test (fake docker, no stack and no network needed)
+        run: sh tools/test-project-guard.sh
+
       - name: Stack state and logs (on failure)
         if: ${{ failure() }}
         run: |
