@@ -107,7 +107,7 @@ Edit `BACKEND_SHA` in `env/pins.env`. Resolution is held to the versions in `loc
 sh tools/lock-backend.sh
 ```
 
-This rewrites the two lock files in `env/backend/` and prints the three snapshot values. Then boot the new stack, and regenerate the snapshot with the two tools from the tag:
+This rewrites the two lock files in `env/backend/` and prints the three snapshot values. With unchanged inputs the container build is replayed from the build cache; to force a real regeneration, run `LOCK_BUILD_FLAGS=--no-cache sh tools/lock-backend.sh` (about 5 minutes). Then boot the new stack, and regenerate the snapshot with the two tools from the tag:
 
 ```bash
 git show env-v1:tools/openapi-snapshot.mjs > tools/openapi-snapshot.mjs
@@ -124,6 +124,8 @@ node tools/openapi-snapshot.mjs hashes.tmp > contract/openapi.NEWSHA7.json
 ```
 
 Replace `NEWSHA7` with the first seven characters of the new `BACKEND_SHA`, remove the old snapshot file, delete the temporary files (`hashes.tmp` and the files taken from the tag), and note the change in `CHANGELOG.md`.
+
+This procedure was run once with the pins unchanged, in a fresh clone: the regeneration with `--no-cache` and the regenerated snapshot both came out byte-identical to the committed files. It was not run with a changed backend pin.
 
 ## 8. Extension mechanism for consumers
 

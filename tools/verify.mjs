@@ -32,7 +32,7 @@ const known = new Set(['--fresh', '--no-browser', '--help']);
 const unknown = args.filter((a) => !known.has(a));
 if (args.includes('--help') || unknown.length) {
   console.log(unknown.length ? `unknown argument(s): ${unknown.join(' ')}\n` : '');
-  console.log('usage: node tools/verify.mjs [--fresh]\n  --fresh  reset the stack first: sh tools/reset.sh (deletes the database volume and removes the project\'s orphans, including an attempt\'s extra services)');
+  console.log('usage: node tools/verify.mjs [--fresh]\n  --fresh  reset the stack first: sh tools/reset.sh (deletes the database volume and removes the project\'s orphans, including your own extra services)');
   process.exit(unknown.length ? EXIT_COULD_NOT_RUN : 0);
 }
 const fresh = args.includes('--fresh');
@@ -81,7 +81,7 @@ async function preflight() {
 
 if (fresh) {
   console.log('--fresh: this RESETS the stack before checking. It deletes the database volume and removes the conduit-env project\'s containers and');
-  console.log('orphans (an attempt\'s extra services included). Every other Docker object is left alone. Reset: sh tools/reset.sh with COMPOSE_FILE=compose.yaml.');
+  console.log('orphans (your own extra services included). Every other Docker object is left alone. Reset: sh tools/reset.sh with COMPOSE_FILE=compose.yaml.');
 }
 
 const pre = await preflight();
@@ -92,7 +92,7 @@ if (pre.some((p) => p.level === 'error')) {
 }
 
 if (fresh) {
-  // COMPOSE_FILE=compose.yaml makes reset.sh ignore an attempt's compose.override.yaml; the project-name guard still runs and still passes.
+  // COMPOSE_FILE=compose.yaml makes reset.sh ignore a compose.override.yaml; the project-name guard still runs and still passes.
   const r = await run('sh', ['tools/reset.sh'], { timeoutMs: 600_000, inherit: true, env: { ...process.env, COMPOSE_FILE: 'compose.yaml' } });
   if (r.code !== 0) {
     console.log(`verify could not run: sh tools/reset.sh exited ${r.code}.`);
