@@ -3,7 +3,7 @@
 import { resolve, sep, basename } from 'node:path';
 
 export const EXIT_COULD_NOT_RUN = 90;
-// The API origin the frontend's own source falls back to when VITE_API_URL is unset (docs/env/PHASE1-REPORT.md, K5 scoping: the Vue
+// The API origin the frontend's own source falls back to when VITE_API_URL is unset (the Vue
 // config reads `VITE_API_URL || "https://api.realworld.show/api"`). A correctly built frontend sends no Fetch/XHR there.
 export const OLD_ORIGIN = 'https://api.realworld.show';
 // The origin baked into the build: env/stack.yaml VITE_API_URL=http://localhost:4181/api.

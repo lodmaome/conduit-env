@@ -12,7 +12,7 @@ ARG BUN_IMAGE
 ARG NGINX_IMAGE
 
 # ---- src: upstream source with its git metadata, only to read and assert the submodule pin; then the metadata is dropped. ----
-# git comes from apt and is NOT version-pinned (same known limitation as the backend's fetch stage, docs/env/adr/0001).
+# git comes from apt and is NOT version-pinned (same known limitation as the backend's fetch stage).
 FROM ${PYTHON_IMAGE} AS src
 ARG FRONTEND_REPO
 ARG FRONTEND_SHA

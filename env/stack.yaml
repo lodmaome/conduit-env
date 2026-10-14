@@ -7,7 +7,7 @@
 #
 # Every service with a `build:` has `pull_policy: build`, so `up` always runs the (cached) build. Images are tagged with the
 # pinned SHA only, so without this a changed build arg, Dockerfile or lock file under an unchanged SHA would silently reuse
-# the old image. Proof by build-arg mutation: docs/env/adr/0001, section 4.
+# the old image.
 
 x-backend-build: &backend-build
   context: env/backend
@@ -41,9 +41,9 @@ services:
 
   migrate:
     # One-shot. Runs `migrate` only, never `makemigrations`: it applies the migrations upstream committed and generates nothing.
-    # (Deviation from upstream's compose command `makemigrations && migrate`: docs/env/adr/0001.)
+    # (Deviation from upstream's compose command `makemigrations && migrate`.)
     # The check that no model lacks a migration (`makemigrations --check --dry-run`) is not part of the boot path;
-    # it belongs to the Milestone 2 verify script and CI.
+    # it belongs to the smoke test (tools/verify.mjs).
     build: *backend-build
     pull_policy: build
     image: conduit-env/backend:${BACKEND_SHA:?}

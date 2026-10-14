@@ -11,7 +11,7 @@
 //   browser     tools/browser-check.mjs in a real Chrome (CHROME_BIN); `--no-browser` leaves it out and says so
 //
 // All HTTP checks use 127.0.0.1 explicitly, never `localhost`. Credentials are generated per run, never printed and never written to
-// disk (this tool writes no file; the browser check keeps its Chrome profile in a temp directory it deletes). What a run leaves in the database: docs/env/README.md (measured in ADR 0002).
+// disk (this tool writes no file; the browser check keeps its Chrome profile in a temp directory it deletes). What a run leaves in the database: it registers users and creates articles, which stay until the next reset (ENV-README.md section 6).
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import net from 'node:net';
@@ -22,8 +22,8 @@ import { EXIT_COULD_NOT_RUN, PORTS, evaluatePreflight, makeRunData, summarize } 
 import { checkApiFlow, checkFrontend, checkMigrations, checkTags } from './lib/verify-checks.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-if (!existsSync(resolve(root, 'compose.yaml')) || !existsSync(resolve(root, 'env/OWNED.txt'))) {
-  console.error(`refusing: ${root} is not the conduit-env repository root (compose.yaml or env/OWNED.txt missing).`);
+if (!existsSync(resolve(root, 'compose.yaml')) || !existsSync(resolve(root, 'env/pins.env'))) {
+  console.error(`refusing: ${root} is not the conduit-env repository root (compose.yaml or env/pins.env missing).`);
   process.exit(EXIT_COULD_NOT_RUN);
 }
 
