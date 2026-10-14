@@ -209,7 +209,7 @@ git merge env-v2
 
 (Replace `env-v2` with the tag you are moving to. The fetch and the merge of an existing tag were run in a throwaway clone; the merge of a second release was not, because no second release existed yet.) Every release has an entry in [CHANGELOG.md](CHANGELOG.md) with a **class** (`pin`: an upstream pin or lock changed; `build`: how the images or stack are built or started; `contract`: the served API contract changed; `docs`: documents and tooling only) and a **merge** value (`required`: merge before more test work; `recommended`: merge when convenient; `not needed`). Tags are annotated, named `env-vN`, and never moved. A merge conflicts only where you edited a file you were asked not to edit, or on `README.md` if you replaced it and a release changes it (read the CHANGELOG entry).
 
-**CI.** `.github/workflows/env-verify-core.yml` is a reusable workflow that starts the stack on an `ubuntu-24.04` runner and runs the smoke test and the unit tests. Call it from a workflow of your own:
+**CI.** `.github/workflows/env-verify-core.yml` is a reusable workflow that starts the stack on an `ubuntu-24.04` runner and runs the smoke test, the unit tests and the guard test. It was run on GitHub Actions in a throwaway repository on 2026-10-14 and passed (https://github.com/lodmaome/conduit-env-rehearsal/actions/runs/38642228161; The rehearsal repository was private and throwaway; its run URLs are kept for the record and will not open for a reader.). Call it from a workflow of your own:
 
 ```yaml
 name: verify-env
@@ -227,7 +227,7 @@ jobs:
       contents: read
 ```
 
-It starts the stack with `docker compose -f compose.yaml up -d --wait`, so your `compose.override.yaml` does not change what it verifies; run your own tests against your override in your own job. Chrome comes from the runner image and floats; the workflow prints its version. If Chrome cannot start with its sandbox on some runner, pass the input `chrome-no-sandbox: true` (it was not needed on the runner that was tested). Do not set the repository variable `ENV_CANONICAL` in your repository: it switches on this repository's own wrapper workflow (`env-verify.yml`), which is not meant for a framework.
+It starts the stack with `docker compose -f compose.yaml up -d --wait`, so your `compose.override.yaml` does not change what it verifies; run your own tests against your override in your own job. Chrome comes from the runner image and floats; the workflow prints its version. If Chrome cannot start with its sandbox on some runner, pass the input `chrome-no-sandbox: true` (it was not needed on the runner that was tested). The workflow has one input, `chrome-no-sandbox`. Callers written for the first release that pass `run-gate` or `run-release-gate` are rejected before any job runs; seen on Actions for `run-gate` (https://github.com/lodmaome/conduit-env-rehearsal/actions/runs/38642488107): the run ended as a startup failure with no jobs and the annotation `The workflow is not valid. .github/workflows/caller-rungate.yml (Line: 14, Col: 17): Invalid input, run-gate is not defined in the referenced workflow.` Remove those inputs from your caller. Do not set the repository variable `ENV_CANONICAL` in your repository: it switches on this repository's own wrapper workflow (`env-verify.yml`), which is not meant for a framework.
 
 **Exclude `/auth/` from coverage.** The API serves 25 operations: the 19 RealWorld ones and six that are not part of RealWorld. A coverage-gap tool must exclude every path under `/auth/`.
 
@@ -295,7 +295,7 @@ docker rmi conduit-env/backend:04ef47ced437ee8795a13bdcbc2eff2be19e33bd conduit-
 
 ## 12. What was tested and what was not
 
-Tested: Windows 11 with Docker Desktop (Docker engine 29.8.2, Compose 5.5.1, Node 22.23.1, Chrome 154.0.8037.98), and GitHub Actions `ubuntu-24.04` (Docker 28.0.4, Compose v2.38.2, Node 22.23.1, Chrome 154.0.8037.97): the stack boots, the smoke test passes, the unit tests pass.
+Tested: Windows 11 with Docker Desktop (Docker engine 29.8.2, Compose 5.5.1, Node 22.23.1, Chrome 154.0.8037.98), and GitHub Actions `ubuntu-24.04` (Docker 28.0.4, Compose v2.38.2, Node 22.23.1, Chrome 154.0.8037.97): the stack boots, the smoke test passes (5 checks including the browser), the 34 unit tests pass and the guard test passes. The Actions run of the current workflow files was on 2026-10-14 in a throwaway repository (private, so its URL will not open for a reader).
 Not tested: macOS; any Linux other than that runner; any Compose version other than 5.5.1 and 2.38.2 (2.20.0 is a documented lower bound only); another Chrome version; an offline `docker compose up` (every `up` runs a build pass and whether it contacts the network when everything is cached was not checked); byte-identical image rebuilds (they are not: apt packages are not pinned); production use.
 
 ## 13. Licences
