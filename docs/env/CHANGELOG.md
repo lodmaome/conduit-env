@@ -8,9 +8,7 @@ The release gate (`node tools/release-gate.mjs env-vN`) requires an entry for th
 
 The meanings are in [ATTEMPTS.md](ATTEMPTS.md), section 7. Entry heading format: `## env-vN - date`.
 
-## env-v1 - not yet tagged
-
-This heading becomes `## env-v1 - YYYY-MM-DD` in the commit that is tagged (Milestone 3).
+## env-v1 - 2026-10-14
 
 - class: pin, build, contract, docs
 - merge: required
@@ -22,6 +20,7 @@ The first release. Attempts start from it.
 - **Backend lock:** hash-pinned `requirements.lock.txt` (31 packages) and `build-tools.lock.txt`, installed with `--require-hashes`; the backend source is fetched without its three unused submodules.
 - **Frontend:** the one required submodule is pinned as `FRONTEND_REALWORLD_SHA`, and the build fails if the gitlink or checkout differs.
 - **Contract:** `docs/env/contract/openapi.04ef47c.json`, with a root key `x-conduit-env` holding the lock hashes; six `/auth/` operations are not RealWorld.
-- **Tooling:** `tools/verify.mjs` (with a raw-CDP browser check), `tools/gate.sh`, `tools/release-gate.mjs`, the project guard for `tools/reset.sh`, the snapshot and licence generators.
-- **Docs:** README, ATTEMPTS, WORKING-AGREEMENT, THIRD-PARTY, FINDINGS, HOW-THIS-WAS-BUILT, ADRs 0001 to 0003.
+- **Tooling:** `tools/verify.mjs` (with a raw-CDP browser check), `tools/gate.sh`, `tools/release-gate.mjs` (23 checks, with a self-test; check 4 compares the seed files with their content at the tag `env-v1`, check 16 scans the history of `main` and the tags, check 17 the workflow files), `tools/pin-drift.mjs`, the project guard for `tools/reset.sh`, the snapshot and licence generators.
+- **CI:** `.github/workflows/env-verify-core.yml` (reusable; attempts call it), `env-verify.yml` (push, pull request and dispatch; runs only where the variable `ENV_CANONICAL` is `true`) and `env-pin-drift.yml` (weekly and dispatch; same guard). Every action is pinned by commit SHA. Run on GitHub Actions: see ADR 0004 sections 4 and 5.
+- **Docs:** README, ATTEMPTS, WORKING-AGREEMENT, THIRD-PARTY, FINDINGS, RUNBOOK, HOW-THIS-WAS-BUILT, the milestone reports, ADRs 0001 to 0004.
 - **Seed files** shipped once: `README.md`, `LICENSE`, `docs/attempt/.gitkeep`.

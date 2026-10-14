@@ -7,7 +7,7 @@
 
 ## 1. Project-name guard for `tools/reset.sh` and `tools/dump-state.sh`
 
-**Problem (measured by lodmaome).** `COMPOSE_PROJECT_NAME=docker docker compose config` resolves the project name to `docker`, the owner's other project,
+**Problem (measured in the advisor review, read-only).** `COMPOSE_PROJECT_NAME=docker docker compose config` resolves the project name to `docker`, the owner's other project,
 because `name: conduit-env` in `compose.yaml` has the lowest precedence. `tools/reset.sh` ran `docker compose down -v --remove-orphans`, which would then have deleted that project's containers and volumes.
 
 **Pre-registered measurement** (read-only: `docker compose config`, working directory = repository root, Compose 5.5.1, Windows, 2026-10-09; the rule was written before running, in `m2-evidence\PREREGISTRATION.md`).
@@ -63,7 +63,7 @@ A first version of the message check also matched the echoed `RUN` command text 
 **No `.git` in the shipped image** (`no-git-check.txt`, seen). A `docker run` is not allowed here, so the stages were exported as tars (`--output type=tar`; a `type=local` export fails on Windows with a symlink privilege error) and listed:
 final image stage 2168 entries, 0 `.git`; `src` stage 9435 entries, 0 `.git`; presence control, the `src` stage of a Dockerfile copy with the `rm -rf .git ...` line neutralised: 9706 entries, **271** `.git` entries.
 The final stage was exported from a build with the same arguments as compose uses, not from the compose-built image itself; `docker compose build frontend` through compose also succeeded (`compose-build-frontend.log`).
-It re-tagged `conduit-env/frontend:f7e48c8...` (image id `8a3d12b748e2` to `16bd7eacd2ef`). **Correction (lodmaome, confirmed by me):** the previous image does **not** stay. Docker here uses the containerd image store (`docker info`: driver `io.containerd.snapshotter.v1`).
+It re-tagged `conduit-env/frontend:f7e48c8...` (image id `8a3d12b748e2` to `16bd7eacd2ef`). **Correction (advisor review, confirmed by the building session):** the previous image does **not** stay. Docker here uses the containerd image store (`docker info`: driver `io.containerd.snapshotter.v1`).
 `docker images -a` does not list `8a3d12b748e2`, and `docker image inspect sha256:8a3d12b748e2ffa89973aef4619545daa4ea536ec9c47753422059a5c1b72217` answers "No such image", although the running frontend container had been created from it
 (`m2-evidence\t0.2\` and `t0.1\frontend-after-reset.txt`, seen). So a rebuild under the same tag drops the previous image: there is no rollback target. Docker did this, not a command of mine; no rule was broken. The `16bd7eacd2ef` image is gone the same way.
 **Licence read.** `realworld/LICENSE` at the pinned submodule commit, read from the exported `src` tree (`m2-evidence\t0.2\lic\realworld-LICENSE`, sha256 `a999311c...fc9dd`): MIT, "Copyright (c) 2021 Thinkster" and "Copyright (c) 2026 c4ffein".
@@ -100,7 +100,7 @@ which the verify evaluator reports as FAIL. Unchanged before and after: `git sta
 
 ## 4. The raw-CDP browser check (`tools/browser-check.mjs`)
 
-**Correction to the brief (lodmaome):** the expected API origin is not `http://127.0.0.1:4181`. The frontend is built with `VITE_API_URL=http://localhost:4181/api` (`env/stack.yaml`), so the origin baked into the build is `http://localhost:4181`.
+**Correction to the brief (advisor session; the building session flagged the conflict):** the expected API origin is not `http://127.0.0.1:4181`. The frontend is built with `VITE_API_URL=http://localhost:4181/api` (`env/stack.yaml`), so the origin baked into the build is `http://localhost:4181`.
 
 **Pre-registered CORS probe** (`m2-evidence\PREREGISTRATION.md`, "Task 2"; output `m2-evidence\t2\cors-probe.txt`, seen). `GET /api/tags` and a preflight `OPTIONS /api/articles` with `Origin` set to `http://localhost:4180`, `http://127.0.0.1:4180` and a control `http://evil.example`:
 all three get `access-control-allow-origin: *`; the preflight allows `accept, authorization, content-type, user-agent, x-csrftoken, x-requested-with` and `DELETE, GET, OPTIONS, PATCH, POST, PUT`. So the API accepts any origin (the wildcard was in the ADR; now measured), and the frontend works from either host name.

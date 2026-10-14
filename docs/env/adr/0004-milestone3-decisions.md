@@ -1,6 +1,6 @@
 # ADR 0004: Milestone 3 decisions
 
-- **Status:** draft, sections are added as each stage lands.
+- **Status:** accepted for stages 0 to 3 (sections 1 to 5). The release itself (stages 4 and 5) is recorded in the release notes, after the tag; nothing is committed after the tag.
 - **Date:** 2026-10-09
 - **Decider:** lodmaome. Drafted with AI assistance (Claude).
 - **Evidence:** outside the repository, in `C:\git\conduit-env-evidence\m3-evidence\` (cited by name only).
@@ -43,7 +43,7 @@ Why this method: cherry-pick keeps each commit's author, author date, message an
 
 ## 4. The rehearsal on GitHub Actions (stage 2, private throwaway repository)
 
-**Method.** A clone of the environment, `origin` renamed to `env`, pushed to a new **private** repository (`lodmaome/conduit-env-rehearsal`, visibility confirmed `PRIVATE` with `gh repo view` before the first push). Pre-registered "green" (`m3-evidence\PREREGISTRATION.md`, criteria A to E and Amendment 1, written before the first run). Logs read back with `gh run view --log` and scanned for token-shaped strings, credential assignments, this machine's user name and home paths before anything was quoted (`m3-evidence\scan-log.mjs`, with a presence control; 0 findings in every log). Evidence: `m3-evidence\s2\`.
+**Method.** A clone of the environment, `origin` renamed to `env`, pushed to a new **private** repository (`lodmaome/conduit-env-rehearsal`, visibility confirmed `PRIVATE` with `gh repo view` before the first push). The rehearsal repository was private and throwaway; its run URLs are kept for the record and will not open for a reader. Pre-registered "green" (`m3-evidence\PREREGISTRATION.md`, criteria A to E and Amendment 1, written before the first run). Logs read back with `gh run view --log` and scanned for token-shaped strings, credential assignments, this machine's user name and home paths before anything was quoted (`m3-evidence\scan-log.mjs`, with a presence control; 0 findings in every log). Evidence: `m3-evidence\s2\`.
 Every `git push` named its refspec (`main` or the branch); `backup/pre-rewrite` was not pushed.
 
 | Run | Trigger | Variable | Result | Time | Criterion |
@@ -70,3 +70,28 @@ Chrome's sandbox probe (`chrome --headless=new --dump-dom about:blank`, no `--no
 
 **Pushes used (limit 6 in all):** 5. `main`: 3 (the first push, the removal of the caller, the merge of the fix); the PR branch: 2 (opening it, then the merge of the fix). No force, no tags. Pull request #1 is open, not merged and not closed.
 **Superseded "not seen yet" sentences of section 2:** setup-node installs the exact 22.23.1: seen; the runner supports Node 24 actions: seen; Chrome's sandbox on ubuntu-24.04: seen working without `--no-sandbox`.
+
+## 5. The canonical repository's first runs (stage 3, private)
+
+**Method.** A new **private** repository `lodmaome/conduit-env` (visibility `PRIVATE`, confirmed with `gh repo view` before the push); the repository variable `ENV_CANONICAL=true` was set **before** the first push, so no first run was skipped; then `git push origin main` (that ref only: no tags, no other branch, no `backup/pre-rewrite`). Pre-registered criteria F to J (`m3-evidence\PREREGISTRATION.md`, Amendment 2, written before the first outward command). Evidence: `m3-evidence\s3\`.
+Before the push, at the commit that was pushed (`f6704cf0884e`, 49 commits): `sh tools/gate.sh` 0 failed; the release gate in normal and in `--local` mode 22 PASS and 1 SKIP (check 4), 0 failed; its self-test passed; `node --test` 76 of 76 (`s3\gate.txt`, `release-normal.txt`, `release-local.txt`, `selftest.txt`, `node-test.txt`, seen).
+
+| Run | Trigger | Result | Time | Criterion |
+|---|---|---|---|---|
+| `env-verify` (https://github.com/lodmaome/conduit-env/actions/runs/38480389953) | push to main | success on head `f6704cf0884e` | 2 m 0 s (job 1 m 57 s) | F: seen. verify 5 PASS, `failed checks: 0`; gate 0 failed; unit tests 76 of 76; release gate for `env-v1` 22 PASS and 1 SKIP (check 4), 0 failed; self-test passed |
+| `env-verify` (.../runs/38480657330) | dispatch | success, head `f6704cf0884e` | 1 m 49 s | G: seen |
+| `env-pin-drift` (.../runs/38480661317) | dispatch | success, head `f6704cf0884e`; 11 pins compared, 0 drift, `FRONTEND_REALWORLD_SHA` skipped by design | 26 s (job 22 s) | H: seen; the schedule is still not seen |
+
+**What was seen.** Exactly three runs exist, all `success`, none skipped (criterion I: seen). The remote has the branch `main` only and 0 tags, and its `main` equals the local `main` (`f6704cf0884e`). The runner was the same as in section 4 (`ubuntu-24.04`, image `ubuntu24/20261004.327`, Docker Compose v2.38.2, Chrome 154.0.8037.97, Node 22.23.1); `compose up -d --wait` took 65 s in both verify runs, the gate 15 to 18 s (`s3\step-timings.txt`).
+**Failures: none.** There was no failed run in stage 3, so there is no new cause to attribute. The two failures of the rehearsal (section 4) were a harness design error and my own check 16 on a detached checkout, and neither came back.
+**Log scans** (criterion J; `scan-log.mjs`, each with its presence control, which finds its probe): 0 findings in each of the three logs (`s4\s3-log-scan.txt`, seen: 2238, 2233 and 202 lines). The advisor session (a separate Claude conversation that reviews this work for the owner) scanned the same logs read-only with the owner's gh login: no user name, no token shape; a broader home-path pattern matched one line per long run, which is the self-test printing its own fixture label `a C:\Users path` (harmless).
+**Not seen:** a scheduled run; how the repository behaves once it is public; a run on a tag; check 4 on the pushed repository (section 6).
+
+## 6. Check 4 compares the seed files against the tag (decision of lodmaome at G2.5)
+
+**The gap.** The first version of check 4 printed "first release: skipped" for the candidate `env-v1` whatever the repository held. The wrapper runs the gate for the newest changelog heading, `env-v1`, on every push, so after the tag a change to a seed file (`README.md`, `LICENSE`, `docs/attempt/.gitkeep`) would have gone through with a SKIP. This was seen in a throwaway clone with an `env-v1` tag before the fix (README.md changed after the tag: check 4 SKIP, 23 checks, 0 failed).
+**The rule now** (`tools/lib/release-checks.mjs`, `tools/lib/release-ctx.mjs`): if the tag `env-v1` exists, every path in `env/SEED.txt` is compared at `HEAD` with its content at the tag (blob ids). A difference, a file missing at `HEAD` or a file missing at the tag **fails** and names the file: "seed file changed since env-v1: README.md". No difference passes and says how many files were compared ("3 seed files compared against the tag env-v1: identical"). If the tag does not exist and the candidate is `env-v1`, the visible SKIP "first release: skipped" stays (it is the state before the release). A candidate after `env-v1` compares against `env-v1` as before, and fails if that tag is missing. The tag has to be reachable in the checkout: the core workflow checks out with full history, which also fetches tags.
+**Pre-registered expectations** were written before the code (`m3-evidence\PREREGISTRATION.md`, Amendment 3, 2026-10-14). **Fixtures** (real temporary git repositories, annotated tag, as check 16's self-test): `env-v1` with its tag and README.md changed: FAIL naming README.md; `env-v1` with its tag and LICENSE removed: FAIL naming LICENSE; `env-v2` with a seed changed: FAIL; controls: `env-v1` with its tag and identical seeds: PASS "3 seed files compared"; `env-v1` with no tag: visible SKIP; `env-v2` identical: PASS. Unit tests add a real-repository test of the comparison (equal, changed, removed, never existing).
+**Seen:** the self-test and the unit tests (the numbers are in the Milestone 3 report, section 9) and the post-tag test in a fresh throwaway clone (same section).
+**Seen on real Actions** (stage 4r, rehearsal repository, 2026-10-14; pre-registered as Amendment 4; The rehearsal repository was private and throwaway; its run URLs are kept for the record and will not open for a reader.): a dispatched `env-verify` run on a branch at commit `c8122b7` with an annotated tag `env-v1` on it succeeded and printed `PASS [ 4] ... 3 seed files compared against the tag env-v1: identical` (https://github.com/lodmaome/conduit-env-rehearsal/actions/runs/38621695440), with the release gate at 23 PASS and 0 SKIP; the same workflow on a branch with one more commit appending a line to `README.md` failed with check 4 as the only failing check, `seed file changed since env-v1: README.md` (https://github.com/lodmaome/conduit-env-rehearsal/actions/runs/38622028562). So the CI checkout does see the tag. Those runs were on `c8122b7`, whose difference from the commit that is finally tagged is documentation text only.
+**Not seen:** check 4 on the canonical repository after the tag, at the time of writing (the release notes will record it); before the tag exists there it is the visible SKIP.

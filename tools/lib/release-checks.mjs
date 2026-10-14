@@ -163,15 +163,20 @@ export const CHECKS = [
   },
   {
     id: 'seeds-unchanged', num: 4, needsTag: true,
-    title: 'seed files unchanged since env-v1 (at env-v1 itself: "first release: skipped", visibly)',
+    title: 'seed files at HEAD equal their content at the tag env-v1 (env-v1 candidate with no tag yet: "first release: skipped", visibly)',
     async run(ctx) {
-      if (ctx.tag === 'env-v1') return skip('first release: skipped (env-v1 defines the seed files; there is nothing to compare against)');
-      if (!(await ctx.tagExists('env-v1'))) return no('the tag env-v1 does not exist, so "unchanged since env-v1" cannot be checked');
+      const exists = await ctx.tagExists('env-v1');
+      if (!exists && ctx.tag === 'env-v1') return skip('first release: skipped (the tag env-v1 does not exist yet, so there is nothing to compare against; once it exists the seed files are compared against it)');
+      if (!exists) return no('the tag env-v1 does not exist, so "unchanged since env-v1" cannot be checked');
       const seeds = lines(ctx.read('env/SEED.txt')).filter((l) => !isComment(l)).map((l) => l.trim());
       const changed = await ctx.seedsChangedSince('env-v1', seeds);
-      return changed.length ? no(`seed file(s) changed since env-v1: ${changed.join(', ')}`) : ok(`${seeds.length} seed files identical to env-v1`);
+      return changed.length ? no(`seed file changed since env-v1: ${changed.join(', ')}`) : ok(`${seeds.length} seed files compared against the tag env-v1: identical`);
     },
-    fixture: { mutate: () => {}, gitFixture: 'seed-changed', tag: 'env-v2', expect: /seed file\(s\) changed since env-v1: README\.md/ },
+    fixtures: [
+      { name: 'env-v2, a seed changed', mutate: () => {}, gitFixture: 'seed-changed', tag: 'env-v2', expect: /seed file changed since env-v1: README\.md/ },
+      { name: 'env-v1 with its tag, a seed changed', mutate: () => {}, gitFixture: 'seed-changed', tag: 'env-v1', expect: /seed file changed since env-v1: README\.md/ },
+      { name: 'env-v1 with its tag, a seed removed', mutate: () => {}, gitFixture: 'seed-removed', tag: 'env-v1', expect: /seed file changed since env-v1: LICENSE/ },
+    ],
   },
   {
     id: 'snapshot-header', num: 5,

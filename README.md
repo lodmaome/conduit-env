@@ -7,3 +7,4 @@ Everything is documented under [docs/env/](docs/env/README.md): start with [docs
 
 This file is a seed: an attempt may replace it with its own README. The environment never edits it after its first release.
 Licence: MIT, see [LICENSE](LICENSE). Third-party notices: [docs/env/THIRD-PARTY.md](docs/env/THIRD-PARTY.md).
+Built with AI assistance, in the open: see [docs/env/HOW-THIS-WAS-BUILT.md](docs/env/HOW-THIS-WAS-BUILT.md).

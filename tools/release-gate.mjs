@@ -11,7 +11,7 @@
 // fixtures from an in-memory golden tree (tools/lib/golden-tree.mjs), so no tracked file is ever mutated. Check 14 (internal links) and the
 // lychee fixture run Docker through tools/gate.sh, the only `docker run --rm` in the repository.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -57,14 +57,19 @@ if (!selfTest) {
 // ---- self-test ----
 const sp = (kind, text) => { console.log(`${kind}  selftest ${text}`); if (kind === 'FAIL') failed++; };
 
-// a throwaway git repository for the seed check: env-v1 tagged with README.md, then README.md changed. Own directory only.
-function makeSeedRepo(changed) {
+// a throwaway git repository for the seed check: the three seed files committed, then env-v1 tagged (annotated); mode 'identical' leaves HEAD at the tag,
+// 'changed' changes README.md afterwards, 'removed' deletes LICENSE afterwards, 'untagged' creates no tag at all. Own directory only.
+function makeSeedRepo(mode) {
   const dir = mkdtempSync(join(tmpdir(), 'conduit-env-gatefix-'));
   const token = randomBytes(8).toString('hex');
   writeFileSync(join(dir, '.gatefix-marker'), token);
   const g = (...a) => { const r = spawnSync('git', ['-c', 'user.name=gate', '-c', 'user.email=gate@example.com', '-c', 'commit.gpgsign=false', ...a], { cwd: dir, encoding: 'utf8' }); if (r.status !== 0) throw new Error(`git ${a.join(' ')}: ${r.stderr}`); };
-  g('init', '-q'); writeFileSync(join(dir, 'README.md'), 'one\n'); g('add', '.'); g('commit', '-q', '-m', 'seed'); g('tag', 'env-v1');
-  if (changed) writeFileSync(join(dir, 'README.md'), 'two\n');
+  g('init', '-q'); writeFileSync(join(dir, 'README.md'), 'one\n'); writeFileSync(join(dir, 'LICENSE'), 'licence\n');
+  mkdirSync(join(dir, 'docs/attempt'), { recursive: true }); writeFileSync(join(dir, 'docs/attempt/.gitkeep'), '');
+  g('add', '.'); g('commit', '-q', '-m', 'seed');
+  if (mode !== 'untagged') g('tag', '-a', 'env-v1', '-m', 'env-v1');
+  if (mode === 'changed') { writeFileSync(join(dir, 'README.md'), 'two\n'); g('commit', '-q', '-am', 'change a seed'); }
+  if (mode === 'removed') { g('rm', '-q', 'LICENSE'); g('commit', '-q', '-m', 'remove a seed'); }
   return { dir, token };
 }
 function dropSeedRepo({ dir, token }) {
@@ -82,7 +87,7 @@ for (const c of CHECKS) {
   // control: the golden tree passes (or, for the first-release rule, is visibly skipped)
   let control = await c.run(treeCtx(base, { tag: controlTag }));
   if (c.id === 'seeds-unchanged') {
-    const repo = makeSeedRepo(false);
+    const repo = makeSeedRepo('identical');
     try { control = await c.run(treeCtx(base, { tag: 'env-v2', git: gitOps(repo.dir) })); } finally { dropSeedRepo(repo); }
   }
   if (c.id === 'internal-links') control = await c.run(treeCtx(base)); // stub returns code 0
@@ -97,13 +102,26 @@ for (const c of CHECKS) {
     if (fx.links) opts.links = fx.links;
     if (fx.historyInput) opts.historyInput = fx.historyInput;
     let repo;
-    if (fx.gitFixture === 'seed-changed') { repo = makeSeedRepo(true); opts.git = gitOps(repo.dir); }
+    if (fx.gitFixture) { repo = makeSeedRepo(fx.gitFixture === 'seed-changed' ? 'changed' : 'removed'); opts.git = gitOps(repo.dir); }
     let res;
     try { res = await c.run(treeCtx(tree, opts)); } finally { if (repo) dropSeedRepo(repo); }
     const label = fx.name ? ` (${fx.name})` : '';
     if (res.ok) sp('FAIL', `[${fmt(c.num)}] ${c.id}${label}: the failing fixture PASSED (the check cannot fail): ${res.text}`);
     else if (!fx.expect.test(res.text)) sp('FAIL', `[${fmt(c.num)}] ${c.id}${label}: failed, but not as expected (/${fx.expect.source}/): ${res.text}`);
     else sp('PASS', `[${fmt(c.num)}] ${c.id}${label}: fixture fails as intended: ${res.text.slice(0, 140)}`);
+  }
+}
+
+// check 4, two more controls on real temporary repositories: env-v1 with its tag and identical seeds PASSES (and says how many files it compared);
+// env-v1 with no tag at all is a visible SKIP.
+{
+  const c4 = CHECKS.find((x) => x.id === 'seeds-unchanged');
+  for (const [mode, label, want] of [['identical', 'env-v1 with its tag and identical seeds', 'pass'], ['untagged', 'env-v1 with no tag', 'skip']]) {
+    const repo = makeSeedRepo(mode);
+    let res;
+    try { res = await c4.run(treeCtx(goldenTree(), { tag: 'env-v1', git: gitOps(repo.dir) })); } finally { dropSeedRepo(repo); }
+    const good = want === 'pass' ? res.ok && !res.skipped && /3 seed files compared against the tag env-v1/.test(res.text) : res.ok && res.skipped && /first release: skipped/.test(res.text);
+    sp(good ? 'PASS' : 'FAIL', `[${fmt(c4.num)}] ${c4.id} (${label}): control ${want === 'pass' ? 'passes' : 'is a visible skip'}: ${res.text.slice(0, 140)}`);
   }
 }
 

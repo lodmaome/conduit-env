@@ -1,6 +1,10 @@
 // node --test tools/test/*.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { CHECKS, findSecrets, globToRegExp, ownedMatcher, parseEnvFile } from '../lib/release-checks.mjs';
 import { goldenTree } from '../lib/golden-tree.mjs';
 import { gitOps, treeCtx } from '../lib/release-ctx.mjs';
@@ -52,16 +56,38 @@ for (const c of CHECKS) {
   });
 }
 
-test('seeds-unchanged: at env-v1 it is a visible skip, and without a tag env-v1 it fails', async () => {
+test('seeds-unchanged: env-v1 without its tag is a visible skip, with its tag it compares; env-v2 without the tag env-v1 fails', async () => {
   const c = CHECKS.find((x) => x.id === 'seeds-unchanged');
-  const first = await c.run(treeCtx(goldenTree(), { tag: 'env-v1' }));
+  const first = await c.run(treeCtx(goldenTree(), { tag: 'env-v1', git: { tagExists: async () => false } }));
   assert.equal(first.skipped, true);
   assert.match(first.text, /first release: skipped/);
+  const tagged = await c.run(treeCtx(goldenTree(), { tag: 'env-v1', git: { tagExists: async () => true, seedsChangedSince: async () => [] } }));
+  assert.equal(tagged.ok, true);
+  assert.equal(tagged.skipped, undefined, 'with the tag present it is a real pass, not a skip');
+  assert.match(tagged.text, /3 seed files compared against the tag env-v1: identical/);
+  const changed = await c.run(treeCtx(goldenTree(), { tag: 'env-v1', git: { tagExists: async () => true, seedsChangedSince: async () => ['README.md'] } }));
+  assert.equal(changed.ok, false);
+  assert.match(changed.text, /seed file changed since env-v1: README\.md/);
   const later = await c.run(treeCtx(goldenTree(), { tag: 'env-v2', git: { tagExists: async () => false } }));
   assert.equal(later.ok, false);
   assert.match(later.text, /tag env-v1 does not exist/);
   const same = await c.run(treeCtx(goldenTree(), { tag: 'env-v2', git: { tagExists: async () => true, seedsChangedSince: async () => [] } }));
   assert.equal(same.ok, true);
+});
+
+test('gitOps.seedsChangedSince on a real temporary repository: equal, changed, removed and never-existing paths', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'conduit-env-seedtest-'));
+  try {
+    const g = (...a) => { const r = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', '-c', 'commit.gpgsign=false', ...a], { cwd: dir, encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); };
+    g('init', '-q'); writeFileSync(join(dir, 'a.txt'), 'a\n'); writeFileSync(join(dir, 'b.txt'), 'b\n');
+    g('add', '.'); g('commit', '-q', '-m', 'one'); g('tag', '-a', 'env-v1', '-m', 'env-v1');
+    const ops = gitOps(dir);
+    assert.deepEqual(await ops.seedsChangedSince('env-v1', ['a.txt', 'b.txt']), []);
+    writeFileSync(join(dir, 'a.txt'), 'changed\n'); g('commit', '-q', '-am', 'two');
+    g('rm', '-q', 'b.txt'); g('commit', '-q', '-m', 'three');
+    assert.deepEqual(await ops.seedsChangedSince('env-v1', ['a.txt', 'b.txt']), ['a.txt', 'b.txt']);
+    assert.deepEqual(await ops.seedsChangedSince('env-v1', ['never.txt']), ['never.txt'], 'a path missing at both ends is not "equal"');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('gitOps against this very repository: a tag that does not exist is reported as missing', async () => {

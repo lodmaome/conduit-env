@@ -45,9 +45,16 @@ const run = (cmd, args, cwd) => new Promise((res) => {
 export function gitOps(cwd) {
   return {
     tagExists: async (tag) => (await run('git', ['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`], cwd)).code === 0,
+    // Compares each path's blob at HEAD with its blob at the tag. A path missing on either side counts as changed, never as equal.
     seedsChangedSince: async (tag, paths) => {
-      const r = await run('git', ['diff', '--name-only', tag, '--', ...paths], cwd);
-      return r.stdout.split('\n').map((s) => s.trim()).filter(Boolean).sort();
+      const blob = async (rev, p) => { const r = await run('git', ['rev-parse', '--verify', '--quiet', `${rev}:${p}`], cwd); return r.code === 0 ? r.stdout.trim() : null; };
+      const changed = [];
+      for (const p of paths) {
+        const atHead = await blob('HEAD', p);
+        const atTag = await blob(`refs/tags/${tag}`, p);
+        if (atHead === null || atTag === null || atHead !== atTag) changed.push(p);
+      }
+      return changed.sort();
     },
   };
 }

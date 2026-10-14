@@ -39,7 +39,7 @@ Add this line to the attempt's own `CLAUDE.md`:
 ## 4. Extending the stack: `compose.override.yaml`
 
 An attempt adds services, mounts or settings with a file named exactly **`compose.override.yaml`** at the **repository root**, next to `compose.yaml`. Docker Compose loads it automatically.
-The environment never ships that file, and its own checks bypass it. The rules below were measured (ADR 0001 section 4, Compose 5.5.1 on Windows; Linux and Actions are untested):
+The environment never ships that file, and its own checks bypass it. The rules below were measured (ADR 0001 section 4, Compose 5.5.1 on Windows; for these override rules Linux and Actions are untested: the Actions runs used no override):
 
 - **Paths in the override are relative to the repository root**, not to the override file or any subdirectory. A build context or bind mount written relative to a subdirectory fails.
 - **Do not `include` `compose.yaml` from a file in a subdirectory**: the nested `env_file` resolves against the working directory and fails from the repository root.
@@ -70,7 +70,7 @@ The list and the snapshot are in [contract/README.md](contract/README.md).
 
 ## 5a. Verifying in GitHub Actions: the snippet that was tested
 
-The environment ships a reusable workflow, `.github/workflows/env-verify-core.yml` (OWNED: it arrives with the clone and with every env tag). An attempt calls it from a workflow of its own. This file was run on a private rehearsal repository on 2026-10-13 and both jobs passed (https://github.com/lodmaome/conduit-env-rehearsal/actions/runs/38475199746):
+The environment ships a reusable workflow, `.github/workflows/env-verify-core.yml` (OWNED: it arrives with the clone and with every env tag). An attempt calls it from a workflow of its own. This file was run on a private rehearsal repository on 2026-10-13 and both jobs passed (https://github.com/lodmaome/conduit-env-rehearsal/actions/runs/38475199746). The rehearsal repository was private and throwaway; its run URLs are kept for the record and will not open for a reader. The same core also ran from the environment's own wrapper in the canonical repository (https://github.com/lodmaome/conduit-env/actions/runs/38480389953, success):
 
 ```yaml
 name: attempt-verify
