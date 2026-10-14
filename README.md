@@ -1,10 +1,10 @@
 # conduit-env
 
-A framework-neutral, self-hosted [RealWorld](https://github.com/realworld-apps/realworld) "Conduit" environment: a Vue frontend and a django-ninja backend on PostgreSQL 18,
-pinned by commit SHA, started with Docker Compose, with the tooling that verifies it. Test attempts are built in separate repositories cloned from this one.
+A base repository for test frameworks: the RealWorld "Conduit" app (a Vue frontend, a django-ninja API and PostgreSQL 18), pinned by commit and image digest and started with `docker compose up -d --wait`. It holds what is needed to run the app and its API, a smoke test, the API contract snapshot, and the documents that explain them.
 
-Everything is documented under [docs/env/](docs/env/README.md): start with [docs/env/README.md](docs/env/README.md), then [docs/env/ATTEMPTS.md](docs/env/ATTEMPTS.md) if you are starting an attempt.
+- [ENV-README.md](ENV-README.md): the manual (requirements, setup, use, using it as a base).
+- [ARCHITECTURE.md](ARCHITECTURE.md): how it is built.
+- [THIRD-PARTY.md](THIRD-PARTY.md): licences of what it fetches. [CHANGELOG.md](CHANGELOG.md): releases. [LICENSE](LICENSE): MIT.
 
-This file is a seed: an attempt may replace it with its own README. The environment never edits it after its first release.
-Licence: MIT, see [LICENSE](LICENSE). Third-party notices: [docs/env/THIRD-PARTY.md](docs/env/THIRD-PARTY.md).
-Built with AI assistance, in the open: see [docs/env/HOW-THIS-WAS-BUILT.md](docs/env/HOW-THIS-WAS-BUILT.md).
+Replace this README with your own when you build a framework on top of this repository.
+Built with AI assistance (Claude, from Anthropic) under its owner's direction and review.
