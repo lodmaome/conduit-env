@@ -59,13 +59,13 @@ docker compose up -d --wait
 ```
 
 `up` builds the two images (a cold first build downloads base images and fetches the upstream sources), starts `db`, runs the `migrate` one-shot (`python manage.py migrate`, nothing else), then `api`, then `frontend`, and returns when every long-running service is healthy and `migrate` has exited with code 0. Every `up` runs the build step first, which is a quick cache hit when nothing changed.
-**Healthy** means: `docker compose ps` shows `db`, `api` and `frontend` as `healthy`, and `migrate` as exited with code 0.
+The data lives in a Docker volume, so it survives `stop` and the next `up`: only the first `up` on a machine, or a reset, gives the empty database. **Healthy** means: `docker compose ps` shows `db`, `api` and `frontend` as `healthy`, and `migrate` as exited with code 0.
 
 ```bash
 docker compose ps -a
 ```
 
-Measured, one run each on one Windows 11 laptop with Docker Desktop, with the base images already pulled: @COLD@ cold (clone, `docker compose build --no-cache`, `up`) and @WARM@ warm (`up` with the build cache present). These numbers do not include pulling base images on a machine that has none; a first run there is slower by an amount not measured. On a GitHub Actions `ubuntu-24.04` runner, `up -d --wait` took 65 to 67 s from a cold runner.
+Measured on 2026-10-14, one run each on one Windows 11 laptop with Docker Desktop, with the base images already pulled: 54 s cold (clone 0.3 s, `docker compose build --no-cache` 43 s, `up -d --wait` 11 s) and 11 s warm (`up -d --wait` with the build cache present). These numbers do not include pulling base images on a machine that has none; a first run there is slower by an amount not measured. On a GitHub Actions `ubuntu-24.04` runner, `up -d --wait` took 65 to 67 s from a cold runner.
 Two clones on one machine share the project name `conduit-env` and the fixed ports, so run one stack at a time.
 
 ## 5. Where everything runs
@@ -207,7 +207,7 @@ git fetch env --tags
 git merge env-v2
 ```
 
-(Replace `env-v2` with the tag you are moving to.) Every release has an entry in [CHANGELOG.md](CHANGELOG.md) with a **class** (`pin`: an upstream pin or lock changed; `build`: how the images or stack are built or started; `contract`: the served API contract changed; `docs`: documents and tooling only) and a **merge** value (`required`: merge before more test work; `recommended`: merge when convenient; `not needed`). Tags are annotated, named `env-vN`, and never moved. A merge conflicts only where you edited a file you were asked not to edit, or on `README.md` if you replaced it and a release changes it (read the CHANGELOG entry).
+(Replace `env-v2` with the tag you are moving to. The fetch and the merge of an existing tag were run in a throwaway clone; the merge of a second release was not, because no second release existed yet.) Every release has an entry in [CHANGELOG.md](CHANGELOG.md) with a **class** (`pin`: an upstream pin or lock changed; `build`: how the images or stack are built or started; `contract`: the served API contract changed; `docs`: documents and tooling only) and a **merge** value (`required`: merge before more test work; `recommended`: merge when convenient; `not needed`). Tags are annotated, named `env-vN`, and never moved. A merge conflicts only where you edited a file you were asked not to edit, or on `README.md` if you replaced it and a release changes it (read the CHANGELOG entry).
 
 **CI.** `.github/workflows/env-verify-core.yml` is a reusable workflow that starts the stack on an `ubuntu-24.04` runner and runs the smoke test and the unit tests. Call it from a workflow of your own:
 
@@ -259,6 +259,8 @@ These commands change what is on your machine. **AI assistants working in this r
 docker compose stop
 ```
 
+Documented Docker behaviour, not run by the author:
+
 ```bash
 docker compose down
 ```
@@ -284,7 +286,7 @@ docker rmi conduit-env/backend:04ef47ced437ee8795a13bdcbc2eff2be19e33bd conduit-
 | `port is already allocated` or `address already in use` on 4180, 4181 or 4182 | something else uses the port, or a second clone's stack is running. Stop it (`docker compose stop` in that clone) or free the port. The ports cannot be changed without rebuilding the frontend. |
 | `Cannot connect to the Docker daemon` or `open //./pipe/dockerDesktopLinuxEngine` | the engine is not running. Start Docker yourself and wait until it reports running. |
 | The first `up` takes minutes | a cold build downloads base images and fetches the upstream sources and Python packages. Later runs are cache hits. |
-| The frontend opens but shows no data, or requests fail | open `http://localhost:4180`, not `127.0.0.1:4180`: the API origin built in is `http://localhost:4181/api`. If `localhost` resolves to IPv6 `::1` on your machine and a tool cannot connect, use `127.0.0.1` for the API (`http://127.0.0.1:4181/api`); the ports are published on IPv4 loopback only. |
+| The frontend opens but shows no data, or requests fail | the API origin built into the frontend is `http://localhost:4181/api`, so `localhost` must reach `127.0.0.1` on your machine (it did on the machines tested; a machine where it does not was not seen). Open the frontend at `http://localhost:4180`. |
 | `toomanyrequests` while pulling base images | Docker Hub's anonymous rate limit. Sign in with `docker login` or wait. |
 | `tools/reset.sh` or `tools/dump-state.sh` says `refusing: Compose resolves the project name to ...` | a `COMPOSE_PROJECT_NAME` variable, a root `.env` or a `name:` in your override changed the project name. Unset or remove it. |
 | `node tools/verify.mjs` exits 90 | it could not run: a port is not listening, Node is older than 22, `CHROME_BIN` is not set (use `--no-browser`) or not found. The message says which. |
