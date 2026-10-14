@@ -1,6 +1,0 @@
-name: bad
-on: push
-jobs:
-  t:
-    steps:   
-      - run: echo hi

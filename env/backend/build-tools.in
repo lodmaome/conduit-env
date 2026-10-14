@@ -1,5 +1,0 @@
-# Build tools for psycopg2==2.9.6, which is published as a source distribution only.
-# Installed first, from a hash-pinned file, so that `pip install --no-build-isolation` does not fetch
-# an unpinned setuptools from PyPI while building it. Exact pins; see docs/env/adr/0001.
-setuptools==84.0.0
-wheel==0.48.0

@@ -1,8 +1,0 @@
-# lychee config for the gate. Flags that decide the mode (--offline, --include-fragments) are in tools/gate.sh.
-no_progress = true
-cache = false
-# Used by the informational --online mode only.
-timeout = 20
-max_retries = 2
-accept = [200, 429]
-exclude = ['^http://localhost', '^http://127\.0\.0\.1']
