@@ -145,8 +145,8 @@ Errors come from the server and are shown in the error list at the top of the fo
 | ID | Case | Result shown | Evidence |
 |---|---|---|---|
 | UI-050 | username emptied | `username can't be blank` | observed |
-| UI-051 | email not an address | two messages: the `function-after[_validate(), str]` message with the same text as UI-047, and `_Empty Input should be a valid dictionary or instance of _Empty` | observed |
-| UI-052 | a username that another user has | `network Unable to connect to the server` (the API answers `500`); the page stays on `/settings` | observed |
+| UI-051 | email not an address | two messages: the `function-after[_validate(), str]` message with the same text as UI-047, and `_Empty Input should be a valid dictionary or instance of _Empty` (an internal type name shown to the user). **Possible defect.** | observed |
+| UI-052 | a username that another user has | `network Unable to connect to the server` (the API answers `500`); the page stays on `/settings`. **Possible defect:** the user sees a connection error for a server error. | observed |
 
 ### 4.4 Article editor
 
