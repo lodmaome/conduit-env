@@ -87,18 +87,18 @@ sha256sum env/backend/requirements.lock.txt env/backend/build-tools.lock.txt
 
 ## 7. Bumping a pin
 
-Nothing in this repository regenerates the locks or the snapshot: the tools for that live in the `env-v1` tag and are taken from it when needed. **Nothing in this repository proves that a corrupted lock hash fails the build, or that a wrong submodule pin fails it**: those were proven once, in the `env-v1` tag's tools, and are not re-run here. After any bump, run the smoke test.
+Nothing in this repository regenerates the locks or the snapshot: the tools for that live in the `env-v1` tag and are taken from it when needed. A fresh copy of this repository has no tags, so first clone this repository next to your project, from inside your project folder: `git clone https://github.com/lodmaome/conduit-env.git ../conduit-env-base`. Every `git show` below then reads `git -C ../conduit-env-base show env-v1:<path>`. **Nothing in this repository proves that a corrupted lock hash fails the build, or that a wrong submodule pin fails it**: those were proven once, in the `env-v1` tag's tools, and are not re-run here. After any bump, run the smoke test.
 
 *Frontend, base images.* Edit the value in `env/pins.env` (a digest for an image; for a frontend bump also `FRONTEND_REALWORLD_SHA`, set to the submodule commit the new frontend commit points to: the build's error message prints the actual value). Then `docker compose up -d --wait` and the smoke test.
 
 *Backend commit.* The locks must be regenerated and the snapshot with them. Take the generator from the tag (these write five temporary files; delete them afterwards):
 
 ```bash
-git show env-v1:tools/lock-backend.sh > tools/lock-backend.sh
-git show env-v1:tools/lock-hashes.sh > tools/lock-hashes.sh
-git show env-v1:env/backend/Dockerfile.lock > env/backend/Dockerfile.lock
-git show env-v1:env/backend/build-tools.in > env/backend/build-tools.in
-git show env-v1:env/backend/lock-seed.txt > env/backend/lock-seed.txt
+git -C ../conduit-env-base show env-v1:tools/lock-backend.sh > tools/lock-backend.sh
+git -C ../conduit-env-base show env-v1:tools/lock-hashes.sh > tools/lock-hashes.sh
+git -C ../conduit-env-base show env-v1:env/backend/Dockerfile.lock > env/backend/Dockerfile.lock
+git -C ../conduit-env-base show env-v1:env/backend/build-tools.in > env/backend/build-tools.in
+git -C ../conduit-env-base show env-v1:env/backend/lock-seed.txt > env/backend/lock-seed.txt
 ```
 
 Edit `BACKEND_SHA` in `env/pins.env`. Resolution is held to the versions in `lock-seed.txt`; to move versions on purpose, edit that file. Then:
@@ -110,8 +110,8 @@ sh tools/lock-backend.sh
 This rewrites the two lock files in `env/backend/` and prints the three snapshot values. With unchanged inputs the container build is replayed from the build cache; to force a real regeneration, run `LOCK_BUILD_FLAGS=--no-cache sh tools/lock-backend.sh` (about 5 minutes). Then boot the new stack, and regenerate the snapshot with the two tools from the tag:
 
 ```bash
-git show env-v1:tools/openapi-snapshot.mjs > tools/openapi-snapshot.mjs
-git show env-v1:tools/lib/openapi.mjs > tools/lib/openapi.mjs
+git -C ../conduit-env-base show env-v1:tools/openapi-snapshot.mjs > tools/openapi-snapshot.mjs
+git -C ../conduit-env-base show env-v1:tools/lib/openapi.mjs > tools/lib/openapi.mjs
 ```
 
 ```bash
@@ -125,7 +125,7 @@ node tools/openapi-snapshot.mjs hashes.tmp > contract/openapi.NEWSHA7.json
 
 Replace `NEWSHA7` with the first seven characters of the new `BACKEND_SHA`, remove the old snapshot file, delete the temporary files (`hashes.tmp` and the files taken from the tag), and note the change in `CHANGELOG.md`.
 
-This procedure was run once with the pins unchanged, in a fresh clone: the regeneration with `--no-cache` and the regenerated snapshot both came out byte-identical to the committed files. It was not run with a changed backend pin.
+This procedure was run once with the pins unchanged, in a linked clone. In a fresh copy (the ZIP of `env-v3`, made on Windows) only the extraction was run: the seven files taken with `git -C ../conduit-env-base show` were identical to the `env-v1` files, and `sh tools/lock-hashes.sh` printed the three snapshot values. `lock-backend.sh` and the snapshot generation were not run in a fresh copy. In the linked clone: the regeneration with `--no-cache` and the regenerated snapshot both came out byte-identical to the committed files. It was not run with a changed backend pin.
 
 ## 8. Extension mechanism for consumers
 
@@ -143,6 +143,8 @@ The upstream defaults are insecure and are kept: database password `0000`, `ALLO
 | `ENV-README.md` | the manual |
 | `THIRD-PARTY.md` | licences of what the images fetch or run |
 | `CHANGELOG.md` | releases, with class and merge guidance |
+| `AGENTS.md` | instructions for AI assistants; yours to extend |
+| `CLAUDE.md` | one line that imports `AGENTS.md` for Claude Code |
 | `docs/env/ARCHITECTURE.md` | this document |
 | `docs/env/UI-GUIDE.md` | what the user interface does, as observed |
 | `docs/env/API-GUIDE.md` | what the API does, as observed |
