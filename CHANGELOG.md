@@ -5,6 +5,21 @@ One entry per release, newest first. A release is an annotated tag `env-vN`; tag
 - `- class:` one or more of `pin`, `build`, `contract`, `docs`: what kind of change it is (`pin`: an upstream pin or lock; `build`: how the images or stack are built or started; `contract`: the served API contract; `docs`: documents and tooling that do not change the running stack).
 - `- merge:` one of `required`, `recommended`, `not needed`: how urgently a framework built on this repository should merge it.
 
+## env-v4 - 2026-10-15
+
+- class: docs
+- merge: not needed
+
+Documents plus two new files (`AGENTS.md`, `CLAUDE.md`); nothing the stack runs changed.
+
+- **Starting a project.** `ENV-README.md` section 8 now opens with three ways to start: a fresh copy from the GitHub template, a fresh copy from a release ZIP, and the linked clone. It says what you keep (`LICENSE`, `THIRD-PARTY.md`), what to replace (`README.md`), and how newer releases reach each kind of copy, including the patch recipe for a fresh copy (`ARCHITECTURE.md` is in its path list so that the move to `docs/env/` is applied).
+- **Template.** The repository is marked as a GitHub template; `README.md` and `ENV-README.md` section 1 say so.
+- **For AI assistants.** New `AGENTS.md` (and `CLAUDE.md`, which imports it): what to read, facts that break tests, how to treat known defects, and safety defaults you can change. They are yours to extend; a newer release does not replace them in a fresh copy.
+- **Contributions.** The documents say that this repository does not take issues or contributions, and where application defects can be reported.
+- **Troubleshooting and shells.** A row for `no configuration file provided: not found`; the PowerShell forms; the note on which commands need Git Bash or `sh` on the PATH; a note that a Windows ZIP copy loses the executable bit of two scripts.
+- **Quick start and section 12.** The clone command has the real URL; `docs/env/ARCHITECTURE.md` section 7 takes the files of the `env-v1` tag from a clone made next to the project, which also works in a fresh copy; section 12 records the owner's test of a fresh copy from the template.
+- **Typo.** The capital "The" inside the rehearsal note's parentheses in the CI paragraph of `ENV-README.md` is gone together with the dead link to the rehearsal run; the old entries of this file keep their wording.
+
 ## env-v3 - 2026-10-15
 
 - class: docs
