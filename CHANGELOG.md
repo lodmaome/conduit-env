@@ -5,6 +5,19 @@ One entry per release, newest first. A release is an annotated tag `env-vN`; tag
 - `- class:` one or more of `pin`, `build`, `contract`, `docs`: what kind of change it is (`pin`: an upstream pin or lock; `build`: how the images or stack are built or started; `contract`: the served API contract; `docs`: documents and tooling that do not change the running stack).
 - `- merge:` one of `required`, `recommended`, `not needed`: how urgently a framework built on this repository should merge it.
 
+## env-v3 - 2026-10-15
+
+- class: docs
+- merge: recommended
+
+Documents only. Nothing the stack builds or runs changed.
+
+- **Moved.** `ARCHITECTURE.md` moved to `docs/env/ARCHITECTURE.md` (moved first without any edit, then its links were corrected); links to it are updated. The root keeps `README.md`, `ENV-README.md`, `CHANGELOG.md`, `THIRD-PARTY.md` and `LICENSE`.
+- **New.** `docs/env/UI-GUIDE.md` and `docs/env/API-GUIDE.md`: what the user interface and the API do, as observed against the running stack, with stable rule IDs (`UI-001`..., `API-001`...), a permission matrix, the contract snapshot compared with what happened, and a checklist of what can be tested. Behaviour that looks like a defect is listed as "possible defect" with a reproduction.
+- **Shortened.** Section 9 of `ENV-README.md` now keeps only the headline behaviours and links to the guides, which are the single place for application behaviour. The sentence about what not to edit includes `docs/env/`.
+- **Merging.** `docs/env/` is a path you should not edit. A framework that has its own file at `docs/env/...` will see a conflict; `ARCHITECTURE.md` at the root disappears.
+- **Unchanged.** `compose.yaml`, `env/`, `tools/`, `contract/` and `.github/`: `git diff env-v2 -- compose.yaml env tools contract .github` is empty.
+
 ## env-v2 - 2026-10-14
 
 - class: docs
