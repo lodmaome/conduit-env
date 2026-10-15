@@ -3,7 +3,7 @@
 # Refuses to go on unless Compose resolves the project name to exactly "conduit-env".
 #
 # Why: Compose picks the project name with this precedence, and `name:` in compose.yaml comes LAST (measured 2026-10-09; see
-# ARCHITECTURE.md section 5): -p, then COMPOSE_PROJECT_NAME in the environment, then
+# docs/env/ARCHITECTURE.md section 5): -p, then COMPOSE_PROJECT_NAME in the environment, then
 # COMPOSE_PROJECT_NAME in a root .env, then a top-level `name:` in a merged file (an override can change it), then compose.yaml's own
 # `name: conduit-env`. So `COMPOSE_PROJECT_NAME=docker sh tools/reset.sh` would otherwise run `down -v` against another project.
 #
