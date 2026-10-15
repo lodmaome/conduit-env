@@ -265,7 +265,7 @@ curl -s -X POST http://localhost:4181/api/articles/my-title/comments -H "Authori
 
 #### DELETE /api/articles/{slug}/comments/{comment_id}: delete a comment
 
-- **Auth:** required. Allowed for the comment's author and for the author of the article the slug names.
+- **Auth:** required. The two allowed callers are the comment's author and the author of the article the comment belongs to. The permission follows the comment's own article, not the slug in the URL (the slug only has to name an existing article, API-084).
 - **Success:** `204`, empty body.
 - **Errors:** `401`; `403` `{"errors": {"comment": ["forbidden"]}}`; `404` unknown slug (`article`) or unknown comment (`comment`); `422` when `comment_id` is not an integer.
 
@@ -437,7 +437,7 @@ Statuses seen for each caller on an **existing** resource. "Owner" is the author
 | Create article, comment | 401 | 201 | 201 |
 | `PUT` article | 401 | 403 | 200 |
 | `DELETE` article | 401 | 403 | 204 |
-| `DELETE` comment of someone else's article | 401 | 403 (a stranger) | 204 (as article author, or as comment author) |
+| `DELETE` a comment | 401 | 403 (neither the commenter nor the author of the comment's article, whatever slug is in the URL) | 204 (the commenter, or the author of the article the comment belongs to) |
 | Favorite, unfavorite | 401 | 200 | 200 (an author may favorite their own article) |
 | Follow, unfollow another user | 401 | 200 | 403 (yourself) |
 | Feed | 401 | 200 | - |
@@ -446,7 +446,7 @@ Statuses seen for each caller on an **existing** resource. "Owner" is the author
 | ID | Rule | Evidence |
 |---|---|---|
 | API-068 | The order of checks is: token, then existence, then permission. `PUT` or `DELETE` of an **unknown** slug gives `401` anonymously, `404` for any logged-in user; `PUT` or `DELETE` of an **existing** article gives `403` to a logged-in non-author. | observed |
-| API-069 | A comment can be deleted by its author and by the author of the article **named in the URL**, and by nobody else (`403`). | observed |
+| API-069 | A comment can be deleted by its author and by the author of the article **the comment belongs to**, and by nobody else (`403`). A comment's article author and its commenter are the two allowed callers. The author of a different article named in the URL gets `403`: with comments by C on article Y (author B), A (author of X) deleting through X's slug or Y's slug gets `403`, B deleting through X's slug or Y's slug gets `204`, and B deleting a comment on X through either slug gets `403`. | observed |
 
 ## 7. Behaviour notes
 
@@ -466,7 +466,7 @@ Statuses seen for each caller on an **existing** resource. "Owner" is the author
 | API-081 | Every `500` is the Django HTML error page. The cases found: a bad token on a required endpoint (API-007); `PUT /api/user` with a taken username or email, a 61-character username or a 3 000-character image (API-040 to API-043); an article title over 150 characters, a tag over 100 characters, `title: null` on update (API-050 to API-052); favoriting twice (API-086); a negative `limit` or `offset` (API-060); and the `/auth/` cases (API-101, API-102, API-104). | observed |
 | API-082 | `following` is correct for the caller in `GET /api/profiles/{username}`, in the `author` of a single article, in the feed and in the `author` of listed comments; it is always `false` in `GET /api/articles` (API-009). | observed |
 | API-083 | An article in a list has no `body`; an article from create, read-one, update, favorite and unfavorite has it. | observed |
-| API-084 | A comment can be deleted through a wrong slug: `DELETE /api/articles/<slug of article X>/comments/<id of a comment on article Y>` deletes that comment when the caller wrote it (`204`); the slug only has to exist. **Possible defect.** | observed |
+| API-084 | A comment can be deleted through a wrong slug: `DELETE /api/articles/<slug of article X>/comments/<id of a comment on article Y>` deletes that comment (`204`) when the caller wrote it or is the author of article Y; the slug in the URL only has to name an existing article. **Possible defect.** Reproduce: comment on article Y as C, then `DELETE` it as C through the slug of any other existing article. | observed |
 | API-085 | A comment returned by `POST` has `author.following: false`; the comments of `GET` carry the caller's follow state for each author. | observed |
 | API-086 | `POST /api/articles/{slug}/favorite` on an article the caller already favorited gives `500` (HTML). The backend source answers `409` with `Already Favourited Article`, which the endpoint's declared responses do not allow. **Possible defect.** Reproduce: favorite the same article twice. | observed |
 

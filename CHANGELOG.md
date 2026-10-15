@@ -16,7 +16,7 @@ Documents only. Nothing the stack builds or runs changed.
 - **New.** `docs/env/UI-GUIDE.md` and `docs/env/API-GUIDE.md`: what the user interface and the API do, as observed against the running stack, with stable rule IDs (`UI-001`..., `API-001`...), a permission matrix, the contract snapshot compared with what happened, and a checklist of what can be tested. Behaviour that looks like a defect is listed as "possible defect" with a reproduction.
 - **Shortened.** Section 9 of `ENV-README.md` now keeps only the headline behaviours and links to the guides, which are the single place for application behaviour. The sentence about what not to edit includes `docs/env/`.
 - **Merging.** `docs/env/` is a path you should not edit. A framework that has its own file at `docs/env/...` will see a conflict; `ARCHITECTURE.md` at the root disappears.
-- **Unchanged.** `compose.yaml`, `env/`, `tools/`, `contract/` and `.github/`: `git diff env-v2 -- compose.yaml env tools contract .github` is empty.
+- **Unchanged.** `compose.yaml`, `env/`, `contract/` and `.github/` (`git diff env-v2 -- compose.yaml env contract .github` is empty). In `tools/` one comment of `tools/project-guard.sh` was updated (it now points to `docs/env/ARCHITECTURE.md`); `git diff env-v2 -- tools` shows only that comment line.
 
 ## env-v2 - 2026-10-14
 

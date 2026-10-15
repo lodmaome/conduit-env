@@ -18,7 +18,7 @@ What the web application at `http://localhost:4180` does, as observed in a brows
 
 **Possible defects.** Behaviour that looks like a defect is labelled **possible defect**, with how to reproduce it.
 
-**Names used.** `<user>` is a username, `<slug>` an article slug. Texts in quotes are exact. "The error list" is the red list of messages under the page title (a `ul` with the class \`error-messages\`); each entry is the field name followed by the server's message, for example \`email can't be blank\`.
+**Names used.** `<user>` is a username, `<slug>` an article slug. Texts in quotes are exact. "The error list" is the red list of messages under the page title (a `ul` with the class `error-messages`); each entry is the field name followed by the server's message, for example `email can't be blank`.
 
 ## 2. Routes
 
