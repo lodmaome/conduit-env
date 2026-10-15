@@ -1,6 +1,6 @@
 # conduit-env: architecture
 
-How the repository is built and why it is shaped this way. How to use it is in [ENV-README.md](ENV-README.md).
+How the repository is built and why it is shaped this way. How to use it is in [ENV-README.md](../../ENV-README.md). What the application does is in [UI-GUIDE.md](UI-GUIDE.md) and [API-GUIDE.md](API-GUIDE.md).
 
 ## 1. Services and start order
 
@@ -129,7 +129,7 @@ This procedure was run once with the pins unchanged, in a fresh clone: the regen
 
 ## 8. Extension mechanism for consumers
 
-A consumer adds services, mounts or settings with `compose.override.yaml` at the repository root; Compose loads it automatically and it merges over `compose.yaml` and the included stack. The measured rules (paths relative to the repository root, no nested `include`, `-f` bypasses it, a `name:` is refused by the guard, one-shot services and `--wait`, `pull_policy: build`) are in [ENV-README.md](ENV-README.md) section 8. The reusable workflow `.github/workflows/env-verify-core.yml` starts the stack with `-f compose.yaml` on purpose, so an override never changes what it verifies.
+A consumer adds services, mounts or settings with `compose.override.yaml` at the repository root; Compose loads it automatically and it merges over `compose.yaml` and the included stack. The measured rules (paths relative to the repository root, no nested `include`, `-f` bypasses it, a `name:` is refused by the guard, one-shot services and `--wait`, `pull_policy: build`) are in [ENV-README.md](../../ENV-README.md) section 8. The reusable workflow `.github/workflows/env-verify-core.yml` starts the stack with `-f compose.yaml` on purpose, so an override never changes what it verifies.
 
 ## 9. Security posture
 
@@ -141,9 +141,11 @@ The upstream defaults are insecure and are kept: database password `0000`, `ALLO
 |---|---|
 | `README.md` | front page; replace it with your own |
 | `ENV-README.md` | the manual |
-| `ARCHITECTURE.md` | this document |
 | `THIRD-PARTY.md` | licences of what the images fetch or run |
 | `CHANGELOG.md` | releases, with class and merge guidance |
+| `docs/env/ARCHITECTURE.md` | this document |
+| `docs/env/UI-GUIDE.md` | what the user interface does, as observed |
+| `docs/env/API-GUIDE.md` | what the API does, as observed |
 | `LICENSE` | MIT |
 | `compose.yaml` | entry point: project name, includes the stack |
 | `env/stack.yaml` | the four services |

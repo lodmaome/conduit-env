@@ -6,7 +6,7 @@ conduit-env is a **base repository** for test frameworks. It runs one applicatio
 You clone it, add your own tests and tooling on top, and point them at the fixed local addresses. What you get: the running app on `127.0.0.1` ports 4180 to 4182, an empty database every time you reset, a command that returns the stack to that empty state, a smoke test that proves the stack works, and a snapshot of the API contract.
 It is for local and CI use only. It is **not** a production reference: it keeps the upstream defaults (database password `0000`, any CORS origin, Django's development server) and is safe only because every port is bound to `127.0.0.1`.
 
-Other documents: [ARCHITECTURE.md](ARCHITECTURE.md) (how it is built), [THIRD-PARTY.md](THIRD-PARTY.md) (licences of what it fetches), [CHANGELOG.md](CHANGELOG.md) (releases).
+Other documents: [docs/env/ARCHITECTURE.md](docs/env/ARCHITECTURE.md) (how it is built), [docs/env/UI-GUIDE.md](docs/env/UI-GUIDE.md) (what the user interface does) and [docs/env/API-GUIDE.md](docs/env/API-GUIDE.md) (what the API does), [THIRD-PARTY.md](THIRD-PARTY.md) (licences of what it fetches), [CHANGELOG.md](CHANGELOG.md) (releases).
 
 ## 2. Requirements
 
@@ -110,7 +110,7 @@ Start it again (this also rebuilds if a pin or Dockerfile changed):
 docker compose up -d --wait
 ```
 
-Reset to the empty initial state. This deletes the project's containers, its network **and its database volume**, then boots again (guarded, see [ARCHITECTURE.md](ARCHITECTURE.md)):
+Reset to the empty initial state. This deletes the project's containers, its network **and its database volume**, then boots again (guarded, see [docs/env/ARCHITECTURE.md](docs/env/ARCHITECTURE.md)):
 
 ```bash
 sh tools/reset.sh
@@ -182,7 +182,7 @@ git push -u origin main
 
 `env` stays as the source of new releases. Check that it works: `docker compose up -d --wait`, then `node tools/verify.mjs`.
 
-**What to edit and what not to.** Do not edit these; a new release changes them and your edits would conflict: `compose.yaml`, everything under `env/`, `tools/` and `contract/`, `.github/workflows/env-*.yml`, `ENV-README.md`, `ARCHITECTURE.md`, `THIRD-PARTY.md`, `CHANGELOG.md`. If one of them is wrong for you, write down what you saw and the change you propose rather than editing it in place.
+**What to edit and what not to.** Do not edit these; a new release changes them and your edits would conflict: `compose.yaml`, everything under `env/`, `tools/`, `contract/` and `docs/env/`, `.github/workflows/env-*.yml`, `ENV-README.md`, `THIRD-PARTY.md`, `CHANGELOG.md`. If one of them is wrong for you, write down what you saw and the change you propose rather than editing it in place.
 `README.md` and `LICENSE` are yours to replace: write your own README. Everything else you add (your tests, your `package.json`, a root `.gitignore`, `.gitattributes`, `.env`, `.dockerignore`, `compose.override.yaml`) is yours; this repository never ships those files and never changes them.
 
 **Extending the stack: `compose.override.yaml`.** Put a file named exactly `compose.override.yaml` at the repository root, next to `compose.yaml`; Docker Compose loads it automatically. Rules measured with Compose 5.5.1 on Windows (not repeated on Linux):
@@ -233,16 +233,16 @@ It starts the stack with `docker compose -f compose.yaml up -d --wait`, so your 
 
 ## 9. Behaviour your tests will meet
 
-All of this was reproduced against the running stack (backend `04ef47c`, Django 5.2.1, django-ninja 1.4.1; frontend `f7e48c8`).
+The headline behaviours are below; everything else, with every limit, message and status, is in [docs/env/API-GUIDE.md](docs/env/API-GUIDE.md) (the API) and [docs/env/UI-GUIDE.md](docs/env/UI-GUIDE.md) (the user interface), which are the single place for application behaviour.
 
 - **Empty initial state.** After a reset there are no users and no articles. Register through the API or the app.
-- **Emails on reserved or special-use domains are rejected at registration.** `POST /api/users` with `"email": "<name>@example.test"` answers `422` with `value is not a valid email address: The part after the @-sign is a special-use or reserved name that cannot be used with email.` Use an ordinary domain such as `example.com`.
-- **Slugs are not derived from titles alone.** Two `POST /api/articles` with the same title both answer `201`, with different slugs (the second has a random suffix). Read the slug from the response.
-- **A duplicate username is `409`.** `POST /api/users` with an existing username answers `409 Conflict` with `{"errors": {"username": ["has already been taken"]}}`.
-- **Any origin is allowed.** `GET /api/tags` with `Origin: http://evil.example` answers `access-control-allow-origin: *`.
-- **Six extra operations under `/auth/`**, from the `jwtninja` package, not part of RealWorld: `POST /auth/login/`, `POST /auth/refresh/`, `GET /auth/sessions/`, `DELETE /auth/sessions/{session_id}/`, `POST /auth/logout/`, `POST /auth/logout/all/`.
+- **Emails on reserved or special-use domains are rejected at registration** (`@example.test`); use an ordinary domain such as `example.com`.
+- **Slugs are not the title alone.** Two articles with the same title both succeed, with different slugs. Read the slug from the response.
+- **A duplicate username or email is `409`.** Any origin is allowed by CORS.
+- **Tokens last 5 minutes**, and several requests with a bad or expired token answer `500`, not `401`.
+- **Six extra operations under `/auth/`** are not part of RealWorld: a coverage tool must exclude them (the snapshot `contract/openapi.04ef47c.json` lists all 25 operations).
 - **No user-delete endpoint.** What you register stays until the next reset.
-- **The contract snapshot** `contract/openapi.04ef47c.json` is the served OpenAPI document, normalised (keys sorted, 2-space indent, LF) plus one extra root key `x-conduit-env` that holds the backend commit prefix and the sha256 of the two lock files. To use the file as the OpenAPI contract, drop that one root key.
+- The guides list behaviour that looks like a defect (labelled "possible defect", each with a reproduction); tests will meet it.
 
 ## 10. Stop and clean up
 
